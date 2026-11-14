@@ -1,0 +1,2062 @@
+name: Build FocusLock APK
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Project files banao
+        run: |
+          rm -rf FocusLock
+          mkdir -p FocusLock/app
+          cat > FocusLock/app/build.gradle <<'ENDOFFILE'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.rakesh.focuslock'
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId "com.rakesh.focuslock"
+                  minSdk 26
+                  targetSdk 34
+                  versionCode 3
+                  versionName "2.1"
+              }
+
+              signingConfigs {
+                  fixed {
+                      storeFile file('focuslock.jks')
+                      storePassword 'focuslock123'
+                      keyAlias 'focuslock'
+                      keyPassword 'focuslock123'
+                  }
+              }
+
+              buildTypes {
+                  debug {
+                      signingConfig signingConfigs.fixed
+                  }
+                  release {
+                      minifyEnabled false
+                      signingConfig signingConfigs.fixed
+                  }
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+          ENDOFFILE
+          mkdir -p FocusLock/app/src/main
+          cat > FocusLock/app/src/main/AndroidManifest.xml <<'ENDOFFILE'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:tools="http://schemas.android.com/tools">
+
+              <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
+                  tools:ignore="ProtectedPermissions" />
+              <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+              <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+              <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+              <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+              <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+              <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+              <queries>
+                  <intent>
+                      <action android:name="android.intent.action.MAIN" />
+                      <category android:name="android.intent.category.LAUNCHER" />
+                  </intent>
+                  <intent>
+                      <action android:name="android.intent.action.MAIN" />
+                      <category android:name="android.intent.category.HOME" />
+                  </intent>
+              </queries>
+
+              <application
+                  android:allowBackup="false"
+                  android:icon="@mipmap/ic_launcher"
+                  android:label="@string/app_name"
+                  android:supportsRtl="true">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:theme="@android:style/Theme.Material.Light.NoActionBar">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+
+                  <activity
+                      android:name=".BlockActivity"
+                      android:exported="false"
+                      android:excludeFromRecents="true"
+                      android:launchMode="singleTask"
+                      android:taskAffinity="com.rakesh.focuslock.block"
+                      android:theme="@android:style/Theme.Material.NoActionBar.Fullscreen" />
+
+                  <service
+                      android:name=".BlockService"
+                      android:exported="false"
+                      android:foregroundServiceType="specialUse">
+                      <property
+                          android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                          android:value="Self-chosen app blocking timer chosen by the user" />
+                  </service>
+
+                  <service
+                      android:name=".ShortsService"
+                      android:exported="true"
+                      android:label="@string/a11y_name"
+                      android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+                      <intent-filter>
+                          <action android:name="android.accessibilityservice.AccessibilityService" />
+                      </intent-filter>
+                      <meta-data
+                          android:name="android.accessibilityservice"
+                          android:resource="@xml/accessibility_config" />
+                  </service>
+
+                  <receiver
+                      android:name=".BootReceiver"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.BOOT_COMPLETED" />
+                          <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                      </intent-filter>
+                  </receiver>
+              </application>
+          </manifest>
+          ENDOFFILE
+          mkdir -p FocusLock/app/src/main/java/com/rakesh/focuslock
+          cat > FocusLock/app/src/main/java/com/rakesh/focuslock/BlockActivity.java <<'ENDOFFILE'
+          package com.rakesh.focuslock;
+
+          import android.app.Activity;
+          import android.content.Intent;
+          import android.content.pm.PackageManager;
+          import android.graphics.Color;
+          import android.graphics.Typeface;
+          import android.os.Bundle;
+          import android.os.Handler;
+          import android.os.Looper;
+          import android.view.Gravity;
+          import android.widget.Button;
+          import android.widget.LinearLayout;
+          import android.widget.TextView;
+
+          import java.util.Map;
+
+          /** Band app kholne par yeh screen aati hai. */
+          public class BlockActivity extends Activity {
+
+              private TextView title;
+              private TextView sub;
+              private String pkg;
+              private int reason;
+              private final Handler handler = new Handler(Looper.getMainLooper());
+
+              private final Runnable updater = new Runnable() {
+                  @Override
+                  public void run() {
+                      update();
+                      handler.postDelayed(this, 1000);
+                  }
+              };
+
+              @Override
+              protected void onCreate(Bundle b) {
+                  super.onCreate(b);
+                  float d = getResources().getDisplayMetrics().density;
+
+                  LinearLayout root = new LinearLayout(this);
+                  root.setOrientation(LinearLayout.VERTICAL);
+                  root.setGravity(Gravity.CENTER);
+                  root.setBackgroundColor(Color.parseColor("#1B4332"));
+                  int pad = (int) (32 * d);
+                  root.setPadding(pad, pad, pad, pad);
+
+                  TextView icon = new TextView(this);
+                  icon.setText("🔒");
+                  icon.setTextSize(72);
+                  icon.setGravity(Gravity.CENTER);
+                  root.addView(icon);
+
+                  title = new TextView(this);
+                  title.setTextColor(Color.WHITE);
+                  title.setTextSize(24);
+                  title.setTypeface(Typeface.DEFAULT_BOLD);
+                  title.setGravity(Gravity.CENTER);
+                  title.setPadding(0, (int) (16 * d), 0, (int) (8 * d));
+                  root.addView(title);
+
+                  sub = new TextView(this);
+                  sub.setTextColor(Color.parseColor("#D8F3DC"));
+                  sub.setTextSize(18);
+                  sub.setGravity(Gravity.CENTER);
+                  root.addView(sub);
+
+                  TextView note = new TextView(this);
+                  note.setText("आपने खुद यह लॉक लगाया है। अभी अपने काम पर ध्यान दें 💪");
+                  note.setTextColor(Color.parseColor("#95D5B2"));
+                  note.setTextSize(15);
+                  note.setGravity(Gravity.CENTER);
+                  note.setPadding(0, (int) (24 * d), 0, (int) (24 * d));
+                  root.addView(note);
+
+                  Button home = new Button(this);
+                  home.setText("होम पर जाएँ");
+                  home.setTextSize(18);
+                  home.setOnClickListener(v -> goHome());
+                  root.addView(home);
+
+                  setContentView(root);
+                  showFor(getIntent());
+              }
+
+              @Override
+              protected void onNewIntent(Intent intent) {
+                  super.onNewIntent(intent);
+                  setIntent(intent);
+                  showFor(intent);
+              }
+
+              private void showFor(Intent i) {
+                  pkg = i == null ? null : i.getStringExtra("pkg");
+                  reason = i == null ? BlockService.REASON_SESSION
+                          : i.getIntExtra("reason", BlockService.REASON_SESSION);
+                  String label = "यह ऐप";
+                  if (pkg != null) {
+                      try {
+                          PackageManager pm = getPackageManager();
+                          label = pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString();
+                      } catch (Exception ignored) {
+                      }
+                  }
+                  if (reason == BlockService.REASON_LIMIT) {
+                      title.setText(label + " की आज की सीमा पूरी");
+                  } else {
+                      title.setText(label + " अभी बंद है");
+                  }
+                  update();
+              }
+
+              private void update() {
+                  long now = System.currentTimeMillis();
+                  if (reason == BlockService.REASON_SESSION) {
+                      long end = Store.end(this);
+                      long left = end - now;
+                      if (left <= 0) {
+                          finish();
+                          return;
+                      }
+                      sub.setText("फ़ोकस सत्र: " + Store.left(left) + " बाकी (" + Store.clock(end) + " तक)");
+                  } else if (reason == BlockService.REASON_SCHEDULE) {
+                      if (!Store.schedNow(this)) {
+                          finish();
+                          return;
+                      }
+                      sub.setText("शेड्यूल: " + Store.clockMin(Store.schedStart(this)) + " से "
+                              + Store.clockMin(Store.schedEnd(this)) + " तक");
+                  } else {
+                      Map<String, Integer> lim = Store.limits(this);
+                      Integer m = pkg == null ? null : lim.get(pkg);
+                      if (m == null) {
+                          finish();
+                          return;
+                      }
+                      sub.setText("रोज़ की सीमा: " + Store.minutesLabel(m) + "\nकल सुबह फिर खुलेगा");
+                  }
+              }
+
+              @Override
+              protected void onResume() {
+                  super.onResume();
+                  handler.post(updater);
+              }
+
+              @Override
+              protected void onPause() {
+                  super.onPause();
+                  handler.removeCallbacks(updater);
+              }
+
+              @Override
+              public void onBackPressed() {
+                  goHome();
+              }
+
+              private void goHome() {
+                  Intent i = new Intent(Intent.ACTION_MAIN);
+                  i.addCategory(Intent.CATEGORY_HOME);
+                  i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                  try {
+                      startActivity(i);
+                  } catch (Exception ignored) {
+                  }
+                  finish();
+              }
+          }
+          ENDOFFILE
+          mkdir -p FocusLock/app/src/main/java/com/rakesh/focuslock
+          cat > FocusLock/app/src/main/java/com/rakesh/focuslock/BlockService.java <<'ENDOFFILE'
+          package com.rakesh.focuslock;
+
+          import android.app.Notification;
+          import android.app.NotificationChannel;
+          import android.app.NotificationManager;
+          import android.app.PendingIntent;
+          import android.app.Service;
+          import android.app.usage.UsageEvents;
+          import android.app.usage.UsageStatsManager;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.content.pm.ServiceInfo;
+          import android.os.Build;
+          import android.os.Handler;
+          import android.os.IBinder;
+          import android.os.Looper;
+
+          import java.util.HashMap;
+          import java.util.Map;
+          import java.util.Set;
+
+          /**
+           * Background me chalta hai: har 0.7 second dekhta hai ki saamne kaunsa app khula hai.
+           * 3 niyam: focus session, shedule, aur roz ki seema.
+           */
+          public class BlockService extends Service {
+
+              public static final int REASON_SESSION = 1;
+              public static final int REASON_SCHEDULE = 2;
+              public static final int REASON_LIMIT = 3;
+
+              private static final String CHANNEL = "focus_lock";
+              private static final int NOTIF_ID = 7;
+
+              private Handler handler;
+              private String currentFg;
+              private long lastLaunch;
+              private String lastNotifText = "";
+
+              // settings cache (har 5 sec taaza)
+              private long settingsAt;
+              private boolean sessionWas;
+              private long end;
+              private Set<String> sessionPkgs;
+              private Set<String> schedPkgs;
+              private boolean schedNow;
+              private Map<String, Integer> limits = new HashMap<>();
+
+              // usage cache (har 15 sec taaza)
+              private long usageAt;
+              private Map<String, Long> usage = new HashMap<>();
+
+              private final Runnable tick = new Runnable() {
+                  @Override
+                  public void run() {
+                      check();
+                      if (handler != null) handler.postDelayed(this, 700);
+                  }
+              };
+
+              /** Zaroorat ho to service chalao, nahi to band karo. */
+              public static void ensure(Context c) {
+                  Intent i = new Intent(c, BlockService.class);
+                  try {
+                      if (Store.needsService(c)) c.startForegroundService(i);
+                      else c.stopService(i);
+                  } catch (Exception ignored) {
+                  }
+              }
+
+              @Override
+              public IBinder onBind(Intent intent) {
+                  return null;
+              }
+
+              @Override
+              public int onStartCommand(Intent intent, int flags, int startId) {
+                  settingsAt = 0;
+                  usageAt = 0;
+                  loadSettings(System.currentTimeMillis());
+                  Notification n = buildNotification(notifText());
+                  if (Build.VERSION.SDK_INT >= 34) {
+                      startForeground(NOTIF_ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+                  } else {
+                      startForeground(NOTIF_ID, n);
+                  }
+
+                  if (!Store.needsService(this)) {
+                      shutdown();
+                      return START_NOT_STICKY;
+                  }
+                  if (handler == null) {
+                      handler = new Handler(Looper.getMainLooper());
+                      handler.post(tick);
+                  }
+                  return START_STICKY;
+              }
+
+              private void loadSettings(long now) {
+                  settingsAt = now;
+                  Store.saveRemain(this);
+                  end = Store.end(this);
+                  sessionPkgs = Store.pkgs(this);
+                  schedPkgs = Store.schedPkgs(this);
+                  schedNow = Store.schedNow(this);
+                  limits = Store.limits(this);
+              }
+
+              private String notifText() {
+                  long now = System.currentTimeMillis();
+                  if (Store.remaining(this) > 0) return "फ़ोकस सत्र: " + Store.left(Store.remaining(this)) + " बाकी";
+                  if (schedNow) return "शेड्यूल चालू, " + Store.clockMin(Store.schedEnd(this)) + " तक";
+                  return "सीमा और शेड्यूल पर नज़र रखी जा रही है";
+              }
+
+              private Notification buildNotification(String text) {
+                  NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                  NotificationChannel ch = new NotificationChannel(CHANNEL, "फ़ोकस लॉक",
+                          NotificationManager.IMPORTANCE_LOW);
+                  nm.createNotificationChannel(ch);
+                  PendingIntent pi = PendingIntent.getActivity(this, 0,
+                          new Intent(this, MainActivity.class), PendingIntent.FLAG_IMMUTABLE);
+                  lastNotifText = text;
+                  return new Notification.Builder(this, CHANNEL)
+                          .setSmallIcon(R.drawable.ic_lock_white)
+                          .setContentTitle("🔒 फ़ोकस लॉक")
+                          .setContentText(text)
+                          .setOngoing(true)
+                          .setContentIntent(pi)
+                          .build();
+              }
+
+              private void check() {
+                  long now = System.currentTimeMillis();
+
+                  // focus session: ghadi badalne se asar nahi (bacha samay elapsedRealtime se)
+                  long rem = Store.remaining(this);
+                  boolean sessionOn = rem > 0;
+                  if (sessionWas && !sessionOn) {
+                      Store.completeSession(this);
+                      settingsAt = 0;
+                  }
+                  sessionWas = sessionOn;
+
+                  if (now - settingsAt > 5000) {
+                      loadSettings(now);
+                      if (!Store.needsService(this)) {
+                          shutdown();
+                          return;
+                      }
+                      String t = notifText();
+                      if (!t.equals(lastNotifText)) {
+                          NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                          nm.notify(NOTIF_ID, buildNotification(t));
+                      }
+                  }
+
+                  String fg = foregroundApp(now);
+                  if (fg != null) currentFg = fg;
+                  if (currentFg == null || currentFg.equals(getPackageName())) return;
+
+                  int reason = 0;
+                  if (sessionOn && sessionPkgs.contains(currentFg)) {
+                      reason = REASON_SESSION;
+                  } else if (schedNow && schedPkgs.contains(currentFg)) {
+                      reason = REASON_SCHEDULE;
+                  } else if (limits.containsKey(currentFg)) {
+                      if (now - usageAt > 15000) {
+                          usage = Usage.today(this);
+                          usageAt = now;
+                      }
+                      Long used = usage.get(currentFg);
+                      long ms = (used == null ? 0 : used) + (now - usageAt);
+                      if (ms >= limits.get(currentFg) * 60_000L) reason = REASON_LIMIT;
+                  }
+
+                  if (reason != 0 && now - lastLaunch > 1500) {
+                      lastLaunch = now;
+                      Intent i = new Intent(this, BlockActivity.class);
+                      i.putExtra("pkg", currentFg);
+                      i.putExtra("reason", reason);
+                      i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION);
+                      try {
+                          startActivity(i);
+                      } catch (Exception ignored) {
+                      }
+                  }
+              }
+
+              /** Pichhle 1 minute ke events me se aakhri "saamne aaya" app. */
+              private String foregroundApp(long now) {
+                  try {
+                      UsageStatsManager usm = (UsageStatsManager) getSystemService(USAGE_STATS_SERVICE);
+                      UsageEvents events = usm.queryEvents(now - 60_000L, now);
+                      UsageEvents.Event e = new UsageEvents.Event();
+                      String last = null;
+                      while (events.hasNextEvent()) {
+                          events.getNextEvent(e);
+                          if (e.getEventType() == UsageEvents.Event.MOVE_TO_FOREGROUND) {
+                              last = e.getPackageName();
+                          }
+                      }
+                      return last;
+                  } catch (Exception ex) {
+                      return null;
+                  }
+              }
+
+              private void shutdown() {
+                  if (handler != null) {
+                      handler.removeCallbacks(tick);
+                      handler = null;
+                  }
+                  stopForeground(true);
+                  stopSelf();
+              }
+
+              @Override
+              public void onDestroy() {
+                  if (handler != null) {
+                      handler.removeCallbacks(tick);
+                      handler = null;
+                  }
+                  super.onDestroy();
+              }
+          }
+          ENDOFFILE
+          mkdir -p FocusLock/app/src/main/java/com/rakesh/focuslock
+          cat > FocusLock/app/src/main/java/com/rakesh/focuslock/BootReceiver.java <<'ENDOFFILE'
+          package com.rakesh.focuslock;
+
+          import android.content.BroadcastReceiver;
+          import android.content.Context;
+          import android.content.Intent;
+
+          /** Phone restart hone par lock/seema/shedule dobara shuru karta hai. */
+          public class BootReceiver extends BroadcastReceiver {
+              @Override
+              public void onReceive(Context context, Intent intent) {
+                  BlockService.ensure(context);
+              }
+          }
+          ENDOFFILE
+          mkdir -p FocusLock/app/src/main/java/com/rakesh/focuslock
+          cat > FocusLock/app/src/main/java/com/rakesh/focuslock/MainActivity.java <<'ENDOFFILE'
+          package com.rakesh.focuslock;
+
+          import android.Manifest;
+          import android.app.Activity;
+          import android.app.AlertDialog;
+          import android.app.AppOpsManager;
+          import android.app.TimePickerDialog;
+          import android.content.ComponentName;
+          import android.content.Intent;
+          import android.content.pm.PackageManager;
+          import android.content.pm.ResolveInfo;
+          import android.graphics.Color;
+          import android.graphics.Typeface;
+          import android.graphics.drawable.Drawable;
+          import android.graphics.drawable.GradientDrawable;
+          import android.net.Uri;
+          import android.os.Build;
+          import android.os.Bundle;
+          import android.os.Handler;
+          import android.os.Looper;
+          import android.os.PowerManager;
+          import android.os.Process;
+          import android.provider.Settings;
+          import android.telecom.TelecomManager;
+          import android.view.Gravity;
+          import android.view.View;
+          import android.widget.Button;
+          import android.widget.CheckBox;
+          import android.widget.HorizontalScrollView;
+          import android.widget.ImageView;
+          import android.widget.LinearLayout;
+          import android.widget.RadioButton;
+          import android.widget.RadioGroup;
+          import android.widget.ScrollView;
+          import android.widget.Switch;
+          import android.widget.TextView;
+          import android.widget.Toast;
+
+          import java.util.ArrayList;
+          import java.util.Arrays;
+          import java.util.HashMap;
+          import java.util.HashSet;
+          import java.util.LinkedHashMap;
+          import java.util.List;
+          import java.util.Map;
+          import java.util.Set;
+
+          public class MainActivity extends Activity {
+
+              private static final int[] MINUTES = {25, 15, 30, 60, 120, 240, 480};
+              private static final int[] LIMIT_OPTIONS = {0, 15, 30, 45, 60, 90, 120, 180};
+              private static final String[] TABS = {"🎯 फ़ोकस", "⏳ सीमा", "📅 शेड्यूल", "🚫 Shorts", "📊 आँकड़े"};
+              private static final String[] DAY_NAMES = {"र", "सो", "मं", "बु", "गु", "शु", "श"};
+
+              /** Pehli baar ye apps apne aap tick rahenge (agar phone me hain). */
+              private static final Set<String> POPULAR = new HashSet<>(Arrays.asList(
+                      "com.google.android.youtube",
+                      "com.instagram.android",
+                      "com.instagram.lite",
+                      "com.facebook.katana",
+                      "com.facebook.lite",
+                      "com.snapchat.android",
+                      "in.mohalla.sharechat",
+                      "in.mohalla.video",
+                      "com.eterno.shortvideos",
+                      "com.next.innovation.takatak",
+                      "com.zhiliaoapp.musically"
+              ));
+
+              private static final int GREEN = Color.parseColor("#2D6A4F");
+              private static final int DARK = Color.parseColor("#1B4332");
+              private static final int MUTED = Color.parseColor("#52796F");
+              private static final int LIGHT = Color.parseColor("#D8F3DC");
+
+              /** Ek app ki jaankari. */
+              private static class App {
+                  String pkg;
+                  String label;
+                  Drawable icon;
+              }
+
+              private LinearLayout tabBar;
+              private LinearLayout content;
+              private Button bottomButton;
+              private Runnable bottomAction;
+              private final Handler handler = new Handler(Looper.getMainLooper());
+              private Runnable activeTicker;
+              private final Map<String, CheckBox> boxes = new LinkedHashMap<>();
+              private List<App> appsCache;
+              private int tab = 0;
+
+              // focus tab
+              private int selectedMinutes;
+              // schedule tab (bina save kiye badlav)
+              private int schedStart, schedEnd, schedDays;
+              private boolean schedDraftLoaded;
+
+              @Override
+              protected void onCreate(Bundle b) {
+                  super.onCreate(b);
+
+                  LinearLayout outer = new LinearLayout(this);
+                  outer.setOrientation(LinearLayout.VERTICAL);
+                  outer.setBackgroundColor(Color.parseColor("#F4F9F6"));
+
+                  TextView head = new TextView(this);
+                  head.setText("फ़ोकस लॉक");
+                  head.setTextSize(26);
+                  head.setTextColor(DARK);
+                  head.setTypeface(Typeface.DEFAULT_BOLD);
+                  head.setPadding(dp(20), dp(20), dp(20), dp(8));
+                  outer.addView(head);
+
+                  HorizontalScrollView hs = new HorizontalScrollView(this);
+                  hs.setHorizontalScrollBarEnabled(false);
+                  tabBar = new LinearLayout(this);
+                  tabBar.setOrientation(LinearLayout.HORIZONTAL);
+                  tabBar.setPadding(dp(14), 0, dp(14), dp(6));
+                  hs.addView(tabBar);
+                  outer.addView(hs);
+
+                  ScrollView scroll = new ScrollView(this);
+                  content = new LinearLayout(this);
+                  content.setOrientation(LinearLayout.VERTICAL);
+                  content.setPadding(dp(20), dp(10), dp(20), dp(24));
+                  scroll.addView(content);
+                  outer.addView(scroll, new LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+
+                  bottomButton = new Button(this);
+                  bottomButton.setTextSize(18);
+                  bottomButton.setAllCaps(false);
+                  bottomButton.setTextColor(Color.WHITE);
+                  bottomButton.setTypeface(Typeface.DEFAULT_BOLD);
+                  bottomButton.setBackground(round(GREEN, 14));
+                  LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.MATCH_PARENT, dp(58));
+                  blp.setMargins(dp(16), dp(8), dp(16), dp(16));
+                  outer.addView(bottomButton, blp);
+                  bottomButton.setOnClickListener(v -> {
+                      if (bottomAction != null) bottomAction.run();
+                  });
+
+                  setContentView(outer);
+
+                  if (Build.VERSION.SDK_INT >= 33
+                          && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                          != PackageManager.PERMISSION_GRANTED) {
+                      requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
+                  }
+              }
+
+              @Override
+              protected void onResume() {
+                  super.onResume();
+                  appsCache = null;
+                  schedDraftLoaded = false;
+                  render();
+              }
+
+              @Override
+              protected void onPause() {
+                  super.onPause();
+                  stopTicker();
+              }
+
+              // ================= screen banana =================
+
+              private void render() {
+                  stopTicker();
+                  content.removeAllViews();
+                  boxes.clear();
+                  hideBottom();
+
+                  boolean usage = hasUsageAccess();
+                  boolean overlay = Settings.canDrawOverlays(this);
+                  if (!usage || !overlay) {
+                      tabBar.setVisibility(View.GONE);
+                      renderPermissions(usage, overlay);
+                      return;
+                  }
+                  tabBar.setVisibility(View.VISIBLE);
+                  drawTabs();
+                  BlockService.ensure(this);
+
+                  PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+                  if (!pm.isIgnoringBatteryOptimizations(getPackageName())) {
+                      addActionButton("⚡ बैटरी रोक हटाएँ (ज़रूरी, वरना लॉक बीच में रुक सकता है)",
+                              v -> openBatterySetting());
+                  }
+
+                  switch (tab) {
+                      case 1: renderLimits(); break;
+                      case 2: renderSchedule(); break;
+                      case 3: renderShorts(); break;
+                      case 4: renderStats(); break;
+                      default:
+                          if (Store.active(this)) renderActive();
+                          else renderFocusSetup();
+                  }
+              }
+
+              private void drawTabs() {
+                  tabBar.removeAllViews();
+                  for (int i = 0; i < TABS.length; i++) {
+                      final int idx = i;
+                      TextView t = new TextView(this);
+                      t.setText(TABS[i]);
+                      t.setTextSize(15);
+                      t.setPadding(dp(14), dp(8), dp(14), dp(8));
+                      boolean sel = i == tab;
+                      t.setTextColor(sel ? Color.WHITE : DARK);
+                      t.setTypeface(sel ? Typeface.DEFAULT_BOLD : Typeface.DEFAULT);
+                      t.setBackground(round(sel ? GREEN : LIGHT, 20));
+                      LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                              LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                      lp.setMargins(dp(4), 0, dp(4), 0);
+                      t.setOnClickListener(v -> {
+                          tab = idx;
+                          render();
+                      });
+                      tabBar.addView(t, lp);
+                  }
+              }
+
+              private void renderPermissions(boolean usage, boolean overlay) {
+                  addText("शुरू करने से पहले ये 2 अनुमतियाँ दें:", 17, DARK, true, dp(12));
+
+                  addActionButton((usage ? "✅ " : "1️⃣ ") + "ऐप उपयोग की अनुमति (Usage access)",
+                          v -> open(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)));
+                  addText("सूची में \"फ़ोकस लॉक\" ढूँढें और चालू करें।", 14, Color.GRAY, false, dp(14));
+
+                  addActionButton((overlay ? "✅ " : "2️⃣ ") + "दूसरे ऐप्स के ऊपर दिखाने की अनुमति",
+                          v -> open(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                  Uri.parse("package:" + getPackageName()))));
+                  addText("\"Allow display over other apps\" चालू करें।", 14, Color.GRAY, false, dp(20));
+
+                  addRestrictedNote();
+              }
+
+              private void addRestrictedNote() {
+                  addText("⚠️ अगर \"Restricted setting\" लिखा आए:\nSettings → Apps → फ़ोकस लॉक → ऊपर ⋮ (तीन बिंदु) → "
+                                  + "\"Allow restricted settings\" दबाएँ, फिर दोबारा कोशिश करें।",
+                          14, Color.parseColor("#9C6644"), false, dp(10));
+              }
+
+              // ================= 1. FOCUS =================
+
+              private void renderStreakCard() {
+                  LinearLayout card = card(Color.parseColor("#FFF3E0"));
+                  card.addView(text("🔥 लगातार " + Store.streak(this) + " दिन", 20, Color.parseColor("#9C4A00"), true));
+                  card.addView(text("आज फ़ोकस: " + Store.mins(Store.focusToday(this)), 15,
+                          Color.parseColor("#9C6644"), false));
+                  content.addView(card);
+              }
+
+              /** Pakke lock ke liye block seva + sakht mod zaroori. */
+              private void renderStrictWarning() {
+                  if (a11yEnabled() && Store.strict(this)) {
+                      addText("🛡️ पक्का लॉक चालू: समय पूरा होने से पहले कोई तरीका काम नहीं करेगा।",
+                              14, GREEN, true, dp(10));
+                      return;
+                  }
+                  LinearLayout c = card(Color.parseColor("#FDECEA"));
+                  c.addView(text("⚠️ लॉक अभी पूरी तरह पक्का नहीं है", 16, Color.parseColor("#B00020"), true));
+                  c.addView(text("Settings से ऐप रोककर लॉक तोड़ा जा सकता है। 🚫 Shorts टैब में "
+                          + "ब्लॉक सेवा और सख़्त मोड चालू करें।", 14, MUTED, false));
+                  content.addView(c);
+                  addActionButton("पक्का लॉक चालू करें →", v -> {
+                      tab = 3;
+                      render();
+                  });
+              }
+
+              private void renderActive() {
+                  renderStreakCard();
+                  renderStrictWarning();
+                  LinearLayout card = card(LIGHT);
+                  card.addView(text("🔒 फ़ोकस सत्र चालू है", 22, DARK, true));
+                  final TextView left = text("", 18, GREEN, true);
+                  left.setPadding(0, dp(8), 0, dp(4));
+                  card.addView(left);
+                  card.addView(text("समय पूरा होने से पहले यह लॉक बंद नहीं होगा।", 14, MUTED, false));
+                  content.addView(card);
+
+                  addText("बंद ऐप:", 16, DARK, true, dp(8));
+                  for (String pkg : Store.pkgs(this)) {
+                      addText("•  " + labelOf(pkg), 16, Color.DKGRAY, false, dp(4));
+                  }
+
+                  activeTicker = new Runnable() {
+                      @Override
+                      public void run() {
+                          long end = Store.end(MainActivity.this);
+                          long ms = end - System.currentTimeMillis();
+                          if (ms <= 0) {
+                              render();
+                              return;
+                          }
+                          left.setText(Store.left(ms) + " बाकी  (" + Store.clock(end) + " तक)");
+                          handler.postDelayed(this, 1000);
+                      }
+                  };
+                  handler.post(activeTicker);
+              }
+
+              private void renderFocusSetup() {
+                  renderStreakCard();
+                  renderStrictWarning();
+
+                  addText("कितनी देर के लिए?", 17, DARK, true, dp(8));
+                  selectedMinutes = Store.lastMinutes(this);
+                  RadioGroup group = new RadioGroup(this);
+                  group.setOrientation(RadioGroup.VERTICAL);
+                  for (int m : MINUTES) {
+                      RadioButton rb = new RadioButton(this);
+                      rb.setText(m == 25 ? "🍅 पोमोडोरो – 25 मिनट" : Store.minutesLabel(m));
+                      rb.setTextSize(16);
+                      rb.setId(View.generateViewId());
+                      final int mins = m;
+                      rb.setOnCheckedChangeListener((btn, checked) -> {
+                          if (checked) selectedMinutes = mins;
+                      });
+                      group.addView(rb);
+                      if (m == selectedMinutes) rb.setChecked(true);
+                  }
+                  content.addView(group);
+
+                  addText("कौन से ऐप बंद करने हैं?", 17, DARK, true, dp(20));
+                  Set<String> picked = Store.lastPick(this);
+                  if (picked == null) picked = POPULAR;
+                  addAppChecklist(picked);
+
+                  showBottom("🔒  फ़ोकस शुरू करें", this::confirmStart);
+              }
+
+              private void confirmStart() {
+                  final Set<String> chosen = checkedPkgs();
+                  if (chosen.isEmpty()) {
+                      toast("कम से कम एक ऐप चुनें");
+                      return;
+                  }
+                  final int mins = selectedMinutes;
+                  long end = System.currentTimeMillis() + mins * 60_000L;
+                  new AlertDialog.Builder(this)
+                          .setTitle("पक्का शुरू करें?")
+                          .setMessage(chosen.size() + " ऐप " + Store.minutesLabel(mins) + " के लिए बंद होंगे ("
+                                  + Store.clock(end) + " तक)।\n\nयह लॉक बीच में किसी भी तरह नहीं खुलेगा, "
+                                  + "फ़ोन का समय बदलने या restart करने पर भी नहीं।")
+                          .setPositiveButton("हाँ, शुरू करें", (d, w) -> {
+                              Store.start(this, chosen, mins);
+                              BlockService.ensure(this);
+                              toast("🔒 फ़ोकस शुरू हो गया");
+                              render();
+                          })
+                          .setNegativeButton("रद्द करें", null)
+                          .show();
+              }
+
+              // ================= 2. LIMITS =================
+
+              private void renderLimits() {
+                  addText("हर ऐप के लिए रोज़ की सीमा", 18, DARK, true, dp(4));
+                  addText("सीमा पूरी होते ही ऐप रात 12 बजे तक बंद रहेगा।", 14, MUTED, false, dp(12));
+
+                  boolean locked = Store.lockedNow(this);
+                  if (locked) {
+                      addText("🔒 फ़ोकस/शेड्यूल चालू है: अभी सिर्फ़ नई सीमा लगा सकते हैं या सीमा घटा सकते हैं।",
+                              14, Color.parseColor("#9C6644"), false, dp(10));
+                  }
+
+                  final Map<String, Long> usage = Usage.today(this);
+                  final Map<String, Integer> limits = Store.limits(this);
+                  List<App> apps = new ArrayList<>(apps());
+                  apps.sort((a, b) -> {
+                      boolean la = limits.containsKey(a.pkg), lb = limits.containsKey(b.pkg);
+                      if (la != lb) return la ? -1 : 1;
+                      long ua = usage.containsKey(a.pkg) ? usage.get(a.pkg) : 0;
+                      long ub = usage.containsKey(b.pkg) ? usage.get(b.pkg) : 0;
+                      return Long.compare(ub, ua);
+                  });
+
+                  for (App app : apps) {
+                      LinearLayout row = new LinearLayout(this);
+                      row.setOrientation(LinearLayout.HORIZONTAL);
+                      row.setGravity(Gravity.CENTER_VERTICAL);
+                      row.setPadding(0, dp(6), 0, dp(6));
+
+                      ImageView icon = new ImageView(this);
+                      icon.setImageDrawable(app.icon);
+                      row.addView(icon, new LinearLayout.LayoutParams(dp(36), dp(36)));
+
+                      long usedMin = (usage.containsKey(app.pkg) ? usage.get(app.pkg) : 0) / 60_000L;
+                      Integer lim = limits.get(app.pkg);
+                      TextView t = text(app.label + "\nआज: " + Store.mins(usedMin)
+                              + (lim != null ? "  /  " + Store.minutesLabel(lim) : ""), 15,
+                              lim != null && usedMin >= lim ? Color.parseColor("#B00020") : DARK, false);
+                      LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                              0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+                      lp.setMargins(dp(12), 0, dp(8), 0);
+                      row.addView(t, lp);
+
+                      Button btn = new Button(this);
+                      btn.setAllCaps(false);
+                      btn.setTextSize(14);
+                      btn.setText(lim != null ? "⏳ " + Store.minutesLabel(lim) : "सीमा लगाएँ");
+                      btn.setOnClickListener(v -> chooseLimit(app, lim, locked));
+                      row.addView(btn);
+
+                      content.addView(row);
+                  }
+              }
+
+              private void chooseLimit(App app, Integer current, boolean locked) {
+                  String[] labels = new String[LIMIT_OPTIONS.length];
+                  for (int i = 0; i < LIMIT_OPTIONS.length; i++) {
+                      labels[i] = LIMIT_OPTIONS[i] == 0 ? "कोई सीमा नहीं" : Store.minutesLabel(LIMIT_OPTIONS[i]);
+                  }
+                  new AlertDialog.Builder(this)
+                          .setTitle(app.label + " – रोज़ कितनी देर?")
+                          .setItems(labels, (d, which) -> {
+                              int m = LIMIT_OPTIONS[which];
+                              boolean loosen = current != null && (m == 0 || m > current);
+                              if (locked && loosen) {
+                                  toast("लॉक के दौरान सीमा बढ़ा या हटा नहीं सकते");
+                                  return;
+                              }
+                              Store.setLimit(this, app.pkg, m);
+                              BlockService.ensure(this);
+                              render();
+                          })
+                          .show();
+              }
+
+              // ================= 3. SCHEDULE =================
+
+              private void renderSchedule() {
+                  addText("रोज़ का शेड्यूल", 18, DARK, true, dp(4));
+                  addText("तय समय पर चुने हुए ऐप अपने आप बंद हो जाएँगे (जैसे काम के घंटे या रात में)।",
+                          14, MUTED, false, dp(12));
+
+                  if (Store.schedNow(this)) {
+                      LinearLayout card = card(LIGHT);
+                      card.addView(text("📅 शेड्यूल अभी चालू है", 20, DARK, true));
+                      card.addView(text(Store.clockMin(Store.schedStart(this)) + " से "
+                              + Store.clockMin(Store.schedEnd(this)) + " तक।\nखत्म होने के बाद बदल सकेंगे।", 15, MUTED, false));
+                      content.addView(card);
+                      addText("बंद ऐप:", 16, DARK, true, dp(8));
+                      for (String pkg : Store.schedPkgs(this)) addText("•  " + labelOf(pkg), 16, Color.DKGRAY, false, dp(4));
+                      return;
+                  }
+
+                  if (!schedDraftLoaded) {
+                      schedStart = Store.schedStart(this);
+                      schedEnd = Store.schedEnd(this);
+                      schedDays = Store.schedDays(this);
+                      schedDraftLoaded = true;
+                  }
+
+                  final Switch on = new Switch(this);
+                  on.setText("शेड्यूल चालू  ");
+                  on.setTextSize(17);
+                  on.setChecked(Store.schedOn(this));
+                  content.addView(on);
+
+                  LinearLayout times = new LinearLayout(this);
+                  times.setOrientation(LinearLayout.HORIZONTAL);
+                  times.setPadding(0, dp(10), 0, dp(6));
+                  Button sBtn = new Button(this);
+                  sBtn.setAllCaps(false);
+                  sBtn.setText("शुरू: " + Store.clockMin(schedStart));
+                  sBtn.setOnClickListener(v -> new TimePickerDialog(this, (tp, h, m) -> {
+                      schedStart = h * 60 + m;
+                      render();
+                  }, schedStart / 60, schedStart % 60, false).show());
+                  Button eBtn = new Button(this);
+                  eBtn.setAllCaps(false);
+                  eBtn.setText("खत्म: " + Store.clockMin(schedEnd));
+                  eBtn.setOnClickListener(v -> new TimePickerDialog(this, (tp, h, m) -> {
+                      schedEnd = h * 60 + m;
+                      render();
+                  }, schedEnd / 60, schedEnd % 60, false).show());
+                  times.addView(sBtn, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+                  times.addView(eBtn, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+                  content.addView(times);
+
+                  addText("किन दिनों में?", 16, DARK, true, dp(4));
+                  LinearLayout days = new LinearLayout(this);
+                  days.setOrientation(LinearLayout.HORIZONTAL);
+                  // Som se shuru karke dikhao
+                  int[] order = {1, 2, 3, 4, 5, 6, 0};
+                  for (int d : order) {
+                      final int bit = d;
+                      TextView t = new TextView(this);
+                      t.setText(DAY_NAMES[d]);
+                      t.setTextSize(15);
+                      t.setGravity(Gravity.CENTER);
+                      boolean sel = ((schedDays >> d) & 1) == 1;
+                      t.setTextColor(sel ? Color.WHITE : DARK);
+                      t.setBackground(round(sel ? GREEN : LIGHT, 20));
+                      LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(40), 1f);
+                      lp.setMargins(dp(2), 0, dp(2), 0);
+                      t.setOnClickListener(v -> {
+                          schedDays ^= (1 << bit);
+                          render();
+                      });
+                      days.addView(t, lp);
+                  }
+                  content.addView(days);
+
+                  addText("कौन से ऐप बंद हों?", 17, DARK, true, dp(16));
+                  Set<String> picked = Store.schedPkgs(this);
+                  if (picked.isEmpty()) picked = POPULAR;
+                  addAppChecklist(picked);
+
+                  showBottom("💾  शेड्यूल सेव करें", () -> {
+                      Set<String> chosen = checkedPkgs();
+                      if (on.isChecked() && chosen.isEmpty()) {
+                          toast("कम से कम एक ऐप चुनें");
+                          return;
+                      }
+                      if (on.isChecked() && schedDays == 0) {
+                          toast("कम से कम एक दिन चुनें");
+                          return;
+                      }
+                      if (schedStart == schedEnd) {
+                          toast("शुरू और खत्म का समय अलग रखें");
+                          return;
+                      }
+                      Store.saveSchedule(this, on.isChecked(), schedStart, schedEnd, schedDays, chosen);
+                      BlockService.ensure(this);
+                      toast(on.isChecked() ? "✅ शेड्यूल सेव और चालू" : "शेड्यूल बंद कर दिया");
+                      render();
+                  });
+              }
+
+              // ================= 4. SHORTS / STRICT =================
+
+              private void renderShorts() {
+                  addText("Shorts और Reels ब्लॉक", 18, DARK, true, dp(4));
+                  addText("पूरा ऐप चलता रहेगा, सिर्फ़ Shorts/Reels खुलते ही वापस हो जाएँगे।", 14, MUTED, false, dp(12));
+
+                  boolean a11y = a11yEnabled();
+                  LinearLayout card = card(a11y ? LIGHT : Color.parseColor("#FDECEA"));
+                  card.addView(text(a11y ? "✅ ब्लॉक सेवा चालू है" : "❌ ब्लॉक सेवा बंद है", 18,
+                          a11y ? DARK : Color.parseColor("#B00020"), true));
+                  if (!a11y) {
+                      card.addView(text("नीचे बटन दबाएँ → \"Installed apps / Downloaded apps\" → "
+                              + "\"फ़ोकस लॉक – Shorts/Reels ब्लॉक\" → चालू करें।", 14, MUTED, false));
+                  }
+                  content.addView(card);
+                  if (!a11y) {
+                      addActionButton("ब्लॉक सेवा चालू करें (Accessibility)",
+                              v -> open(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
+                      addRestrictedNote();
+                  }
+
+                  addSwitch("▶️ YouTube Shorts बंद करें", Store.blockYtShorts(this), "ytShorts", false);
+                  addSwitch("📸 Instagram Reels बंद करें", Store.blockIgReels(this), "igReels", false);
+                  addSwitch("📘 Facebook Reels बंद करें (प्रयोग)", Store.blockFbReels(this), "fbReels", false);
+
+                  addText("🛡️ सख़्त मोड", 18, DARK, true, dp(4));
+                  addText("फ़ोकस या शेड्यूल के दौरान Settings में इस ऐप को Force stop, Uninstall या "
+                          + "ब्लॉक सेवा बंद करने वाला पेज नहीं खुलेगा।", 14, MUTED, false, dp(6));
+                  addSwitch("सख़्त मोड चालू", Store.strict(this), "strict", true);
+
+                  addText("नोट: YouTube/Instagram अपना डिज़ाइन बदलते रहते हैं। अगर कभी Shorts ब्लॉक न हो, "
+                          + "तो बताइए, अपडेट कर देंगे।", 13, Color.GRAY, false, 0);
+              }
+
+              private void addSwitch(String label, boolean value, final String key, final boolean strictKey) {
+                  Switch s = new Switch(this);
+                  s.setText(label + "  ");
+                  s.setTextSize(16);
+                  s.setChecked(value);
+                  s.setPadding(0, dp(8), 0, dp(8));
+                  s.setOnCheckedChangeListener((btn, checked) -> {
+                      if (!checked && Store.lockedNow(this)) {
+                          toast("लॉक के दौरान इसे बंद नहीं कर सकते");
+                          btn.setChecked(true);
+                          return;
+                      }
+                      if (checked && strictKey && !a11yEnabled()) {
+                          toast("पहले ऊपर से ब्लॉक सेवा चालू करें");
+                      }
+                      Store.setFlag(this, key, checked);
+                  });
+                  content.addView(s);
+              }
+
+              private boolean a11yEnabled() {
+                  String enabled = Settings.Secure.getString(getContentResolver(),
+                          Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+                  if (enabled == null) return false;
+                  ComponentName me = new ComponentName(this, ShortsService.class);
+                  String full = me.flattenToString();
+                  String shortName = me.flattenToShortString();
+                  for (String s : enabled.split(":")) {
+                      if (s.equalsIgnoreCase(full) || s.equalsIgnoreCase(shortName)) return true;
+                  }
+                  return false;
+              }
+
+              // ================= 5. STATS =================
+
+              private void renderStats() {
+                  Map<String, Long> usage = Usage.today(this);
+                  long total = 0;
+                  for (long v : usage.values()) total += v;
+
+                  LinearLayout card = card(LIGHT);
+                  card.addView(text("आज का स्क्रीन टाइम", 15, MUTED, false));
+                  card.addView(text(Store.mins(total / 60_000L), 28, DARK, true));
+                  content.addView(card);
+
+                  LinearLayout c2 = card(Color.parseColor("#FFF3E0"));
+                  c2.addView(text("🔥 लगातार " + Store.streak(this) + " दिन फ़ोकस", 18, Color.parseColor("#9C4A00"), true));
+                  c2.addView(text("आज फ़ोकस सत्र: " + Store.mins(Store.focusToday(this)), 15,
+                          Color.parseColor("#9C6644"), false));
+                  content.addView(c2);
+
+                  addText("सबसे ज़्यादा चले ऐप", 17, DARK, true, dp(8));
+                  List<Map.Entry<String, Long>> list = new ArrayList<>(usage.entrySet());
+                  list.sort((a, b) -> Long.compare(b.getValue(), a.getValue()));
+                  long max = list.isEmpty() ? 1 : Math.max(1, list.get(0).getValue());
+                  int shown = 0;
+                  for (Map.Entry<String, Long> e : list) {
+                      long min = e.getValue() / 60_000L;
+                      if (min < 1) continue;
+                      if (shown++ >= 12) break;
+
+                      addText(labelOf(e.getKey()) + "  –  " + Store.mins(min), 15, DARK, false, dp(2));
+                      LinearLayout bar = new LinearLayout(this);
+                      bar.setOrientation(LinearLayout.HORIZONTAL);
+                      View fill = new View(this);
+                      fill.setBackground(round(GREEN, 6));
+                      float w = (float) e.getValue() / max;
+                      bar.addView(fill, new LinearLayout.LayoutParams(0, dp(10), Math.max(w, 0.02f)));
+                      View rest = new View(this);
+                      bar.addView(rest, new LinearLayout.LayoutParams(0, dp(10), Math.max(1f - w, 0.0001f)));
+                      LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                              LinearLayout.LayoutParams.MATCH_PARENT, dp(10));
+                      lp.setMargins(0, 0, 0, dp(12));
+                      content.addView(bar, lp);
+                  }
+                  if (shown == 0) addText("आज अभी तक कोई डेटा नहीं।", 15, Color.GRAY, false, 0);
+              }
+
+              // ================= helpers =================
+
+              private void addAppChecklist(Set<String> picked) {
+                  List<App> first = new ArrayList<>();
+                  List<App> rest = new ArrayList<>();
+                  for (App a : apps()) {
+                      if (picked.contains(a.pkg)) first.add(a);
+                      else rest.add(a);
+                  }
+                  first.addAll(rest);
+                  for (App app : first) {
+                      LinearLayout row = new LinearLayout(this);
+                      row.setOrientation(LinearLayout.HORIZONTAL);
+                      row.setGravity(Gravity.CENTER_VERTICAL);
+                      row.setPadding(0, dp(6), 0, dp(6));
+
+                      ImageView icon = new ImageView(this);
+                      icon.setImageDrawable(app.icon);
+                      row.addView(icon, new LinearLayout.LayoutParams(dp(36), dp(36)));
+
+                      CheckBox cb = new CheckBox(this);
+                      cb.setText(app.label);
+                      cb.setTextSize(16);
+                      cb.setChecked(picked.contains(app.pkg));
+                      LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                              0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+                      lp.setMargins(dp(12), 0, 0, 0);
+                      row.addView(cb, lp);
+                      row.setOnClickListener(v -> cb.toggle());
+
+                      content.addView(row);
+                      boxes.put(app.pkg, cb);
+                  }
+              }
+
+              private Set<String> checkedPkgs() {
+                  Set<String> chosen = new HashSet<>();
+                  for (Map.Entry<String, CheckBox> e : boxes.entrySet()) {
+                      if (e.getValue().isChecked()) chosen.add(e.getKey());
+                  }
+                  return chosen;
+              }
+
+              private List<App> apps() {
+                  if (appsCache != null) return appsCache;
+                  PackageManager pm = getPackageManager();
+
+                  Set<String> skip = new HashSet<>();
+                  skip.add(getPackageName());
+                  Intent home = new Intent(Intent.ACTION_MAIN);
+                  home.addCategory(Intent.CATEGORY_HOME);
+                  for (ResolveInfo ri : pm.queryIntentActivities(home, 0)) {
+                      skip.add(ri.activityInfo.packageName);
+                  }
+                  try {
+                      TelecomManager tm = (TelecomManager) getSystemService(TELECOM_SERVICE);
+                      String dialer = tm.getDefaultDialerPackage();
+                      if (dialer != null) skip.add(dialer);
+                  } catch (Exception ignored) {
+                  }
+
+                  Intent launcher = new Intent(Intent.ACTION_MAIN);
+                  launcher.addCategory(Intent.CATEGORY_LAUNCHER);
+                  Map<String, App> unique = new LinkedHashMap<>();
+                  for (ResolveInfo ri : pm.queryIntentActivities(launcher, 0)) {
+                      String pkg = ri.activityInfo.packageName;
+                      if (skip.contains(pkg) || unique.containsKey(pkg)) continue;
+                      App a = new App();
+                      a.pkg = pkg;
+                      a.label = ri.loadLabel(pm).toString();
+                      try {
+                          a.icon = ri.loadIcon(pm);
+                      } catch (Exception ignored) {
+                      }
+                      unique.put(pkg, a);
+                  }
+                  List<App> list = new ArrayList<>(unique.values());
+                  list.sort((a, b) -> a.label.compareToIgnoreCase(b.label));
+                  appsCache = list;
+                  return list;
+              }
+
+              private final Map<String, String> labelCache = new HashMap<>();
+
+              private String labelOf(String pkg) {
+                  String l = labelCache.get(pkg);
+                  if (l != null) return l;
+                  l = pkg;
+                  try {
+                      PackageManager pm = getPackageManager();
+                      l = pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString();
+                  } catch (Exception ignored) {
+                  }
+                  labelCache.put(pkg, l);
+                  return l;
+              }
+
+              private boolean hasUsageAccess() {
+                  AppOpsManager aom = (AppOpsManager) getSystemService(APP_OPS_SERVICE);
+                  int mode;
+                  if (Build.VERSION.SDK_INT >= 29) {
+                      mode = aom.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS,
+                              Process.myUid(), getPackageName());
+                  } else {
+                      mode = aom.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS,
+                              Process.myUid(), getPackageName());
+                  }
+                  if (mode == AppOpsManager.MODE_DEFAULT) {
+                      return checkSelfPermission(Manifest.permission.PACKAGE_USAGE_STATS)
+                              == PackageManager.PERMISSION_GRANTED;
+                  }
+                  return mode == AppOpsManager.MODE_ALLOWED;
+              }
+
+              private void openBatterySetting() {
+                  try {
+                      startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                              Uri.parse("package:" + getPackageName())));
+                  } catch (Exception e) {
+                      open(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
+                  }
+              }
+
+              private void open(Intent i) {
+                  try {
+                      startActivity(i);
+                  } catch (Exception e) {
+                      try {
+                          startActivity(new Intent(Settings.ACTION_SETTINGS));
+                      } catch (Exception ignored) {
+                      }
+                  }
+              }
+
+              private void showBottom(String label, Runnable action) {
+                  bottomButton.setText(label);
+                  bottomAction = action;
+                  bottomButton.setVisibility(View.VISIBLE);
+              }
+
+              private void hideBottom() {
+                  bottomAction = null;
+                  bottomButton.setVisibility(View.GONE);
+              }
+
+              private void stopTicker() {
+                  if (activeTicker != null) {
+                      handler.removeCallbacks(activeTicker);
+                      activeTicker = null;
+                  }
+              }
+
+              private void toast(String s) {
+                  Toast.makeText(this, s, Toast.LENGTH_SHORT).show();
+              }
+
+              private int dp(int v) {
+                  return (int) (v * getResources().getDisplayMetrics().density + 0.5f);
+              }
+
+              private GradientDrawable round(int color, int radiusDp) {
+                  GradientDrawable g = new GradientDrawable();
+                  g.setColor(color);
+                  g.setCornerRadius(dp(radiusDp));
+                  return g;
+              }
+
+              private TextView text(String s, int sp, int color, boolean bold) {
+                  TextView t = new TextView(this);
+                  t.setText(s);
+                  t.setTextSize(sp);
+                  t.setTextColor(color);
+                  if (bold) t.setTypeface(Typeface.DEFAULT_BOLD);
+                  return t;
+              }
+
+              private void addText(String s, int sp, int color, boolean bold, int bottomPad) {
+                  TextView t = text(s, sp, color, bold);
+                  t.setPadding(0, 0, 0, bottomPad);
+                  content.addView(t);
+              }
+
+              private void addActionButton(String label, View.OnClickListener l) {
+                  Button b = new Button(this);
+                  b.setText(label);
+                  b.setAllCaps(false);
+                  b.setTextSize(15);
+                  b.setOnClickListener(l);
+                  LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                  lp.setMargins(0, 0, 0, dp(6));
+                  content.addView(b, lp);
+              }
+
+              private LinearLayout card(int color) {
+                  LinearLayout c = new LinearLayout(this);
+                  c.setOrientation(LinearLayout.VERTICAL);
+                  c.setPadding(dp(18), dp(16), dp(18), dp(16));
+                  c.setBackground(round(color, 16));
+                  LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                  lp.setMargins(0, dp(4), 0, dp(14));
+                  c.setLayoutParams(lp);
+                  return c;
+              }
+          }
+          ENDOFFILE
+          mkdir -p FocusLock/app/src/main/java/com/rakesh/focuslock
+          cat > FocusLock/app/src/main/java/com/rakesh/focuslock/ShortsService.java <<'ENDOFFILE'
+          package com.rakesh.focuslock;
+
+          import android.accessibilityservice.AccessibilityService;
+          import android.view.accessibility.AccessibilityEvent;
+          import android.view.accessibility.AccessibilityNodeInfo;
+          import android.widget.Toast;
+
+          import java.util.List;
+
+          /**
+           * Accessibility service:
+           * 1) YouTube Shorts / Instagram Reels / Facebook Reels khulte hi peeche bhej deta hai.
+           * 2) Sakht mode: lock ke dauraan Settings me is app ka page (force stop / uninstall) nahi khulne deta.
+           * Sirf screen ke element ke ID/naam dekhta hai, kuch save ya bhejta nahi.
+           */
+          public class ShortsService extends AccessibilityService {
+
+              private static final String YT = "com.google.android.youtube";
+              private static final String IG = "com.instagram.android";
+              private static final String FB = "com.facebook.katana";
+
+              private static final String[] YT_IDS = {
+                      YT + ":id/reel_recycler",
+                      YT + ":id/reel_player_page_container",
+                      YT + ":id/reel_watch_player",
+                      YT + ":id/shorts_container"
+              };
+              private static final String[] IG_IDS = {
+                      IG + ":id/clips_viewer_view_pager",
+                      IG + ":id/clips_viewer_container",
+                      IG + ":id/clips_video_container"
+              };
+              private static final String[] FB_IDS = {
+                      FB + ":id/reels_viewer_container",
+                      FB + ":id/reels_video_container"
+              };
+
+              private static final String[] SETTINGS_PKGS = {
+                      "com.android.settings",
+                      "com.google.android.packageinstaller",
+                      "com.android.packageinstaller",
+                      "com.miui.securitycenter",
+                      "com.coloros.safecenter",
+                      "com.samsung.android.lool",
+                      "com.android.vending"
+              };
+
+              private long lastAction;
+              private long lastCheck;
+
+              @Override
+              public void onAccessibilityEvent(AccessibilityEvent event) {
+                  if (event == null || event.getPackageName() == null) return;
+                  String pkg = event.getPackageName().toString();
+                  long now = System.currentTimeMillis();
+                  if (now - lastAction < 1200) return;
+                  if (now - lastCheck < 300 && event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
+                  lastCheck = now;
+
+                  try {
+                      if (YT.equals(pkg) && Store.blockYtShorts(this)) {
+                          if (hasAny(YT_IDS)) back("YouTube Shorts बंद हैं 🚫");
+                      } else if (IG.equals(pkg) && Store.blockIgReels(this)) {
+                          if (hasAny(IG_IDS)) back("Instagram Reels बंद हैं 🚫");
+                      } else if (FB.equals(pkg) && Store.blockFbReels(this)) {
+                          if (hasAny(FB_IDS)) back("Facebook Reels बंद हैं 🚫");
+                      } else if (isSettings(pkg) && Store.strict(this) && Store.lockedNow(this)) {
+                          if (mentionsMe()) {
+                              lastAction = now;
+                              performGlobalAction(GLOBAL_ACTION_HOME);
+                              toast("सख़्त मोड: लॉक के दौरान यह सेटिंग नहीं खुलेगी 🔒");
+                          }
+                      }
+                  } catch (Exception ignored) {
+                  }
+              }
+
+              private boolean isSettings(String pkg) {
+                  for (String s : SETTINGS_PKGS) if (s.equals(pkg)) return true;
+                  return false;
+              }
+
+              private boolean hasAny(String[] ids) {
+                  AccessibilityNodeInfo root = getRootInActiveWindow();
+                  if (root == null) return false;
+                  for (String id : ids) {
+                      List<AccessibilityNodeInfo> found = root.findAccessibilityNodeInfosByViewId(id);
+                      if (found != null) {
+                          for (AccessibilityNodeInfo n : found) {
+                              if (n != null && n.isVisibleToUser()) return true;
+                          }
+                      }
+                  }
+                  return false;
+              }
+
+              private boolean mentionsMe() {
+                  AccessibilityNodeInfo root = getRootInActiveWindow();
+                  if (root == null) return false;
+                  String name = getString(R.string.app_name);
+                  List<AccessibilityNodeInfo> a = root.findAccessibilityNodeInfosByText(name);
+                  if (a != null && !a.isEmpty()) return true;
+                  List<AccessibilityNodeInfo> b = root.findAccessibilityNodeInfosByText("FocusLock");
+                  return b != null && !b.isEmpty();
+              }
+
+              private void back(String msg) {
+                  lastAction = System.currentTimeMillis();
+                  performGlobalAction(GLOBAL_ACTION_BACK);
+                  toast(msg);
+              }
+
+              private void toast(String msg) {
+                  try {
+                      Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+                  } catch (Exception ignored) {
+                  }
+              }
+
+              @Override
+              public void onInterrupt() {
+              }
+          }
+          ENDOFFILE
+          mkdir -p FocusLock/app/src/main/java/com/rakesh/focuslock
+          cat > FocusLock/app/src/main/java/com/rakesh/focuslock/Store.java <<'ENDOFFILE'
+          package com.rakesh.focuslock;
+
+          import android.content.Context;
+          import android.content.SharedPreferences;
+
+          import java.text.SimpleDateFormat;
+          import java.time.LocalDate;
+          import java.util.Calendar;
+          import java.util.Date;
+          import java.util.HashMap;
+          import java.util.HashSet;
+          import java.util.Locale;
+          import java.util.Map;
+          import java.util.Set;
+
+          /** Saari settings phone me save rehti hain (restart ke baad bhi). */
+          public final class Store {
+
+              private Store() {}
+
+              private static SharedPreferences p(Context c) {
+                  return c.getSharedPreferences("lock", Context.MODE_PRIVATE);
+              }
+
+              // ================= Focus session =================
+
+              /*
+               * Samay phone ki ghadi se nahi, "boot ke baad bita samay" (elapsedRealtime) se ginte hain.
+               * Isliye phone ki tareekh/samay aage karne se lock jaldi khatam nahi hoga.
+               * Restart hone par bacha hua samay wahi se aage chalta hai.
+               */
+              private static int bootCount(Context c) {
+                  try {
+                      return android.provider.Settings.Global.getInt(c.getContentResolver(),
+                              android.provider.Settings.Global.BOOT_COUNT);
+                  } catch (Exception e) {
+                      return -1;
+                  }
+              }
+
+              /** Session me kitne millisecond bache hain (0 = koi session nahi). */
+              public static long remaining(Context c) {
+                  SharedPreferences sp = p(c);
+                  long endEl = sp.getLong("endEl", 0L);
+                  if (endEl == 0L) return 0L;
+                  long nowEl = android.os.SystemClock.elapsedRealtime();
+                  int boot = bootCount(c);
+                  boolean rebooted = boot != sp.getInt("boot", -2) || nowEl < sp.getLong("lastEl", 0L);
+                  if (rebooted) {
+                      long rem = sp.getLong("remain", 0L);
+                      endEl = nowEl + rem;
+                      sp.edit().putLong("endEl", rem > 0 ? endEl : 0L)
+                              .putInt("boot", boot)
+                              .putLong("lastEl", nowEl)
+                              .commit();
+                      return Math.max(0L, rem);
+                  }
+                  return Math.max(0L, endEl - nowEl);
+              }
+
+              /** Service har kuch second me bacha samay save karti hai (restart ke liye). */
+              public static void saveRemain(Context c) {
+                  long rem = remaining(c);
+                  if (rem <= 0) return;
+                  p(c).edit().putLong("remain", rem)
+                          .putLong("lastEl", android.os.SystemClock.elapsedRealtime())
+                          .apply();
+              }
+
+              /** Dikhane ke liye: session kab khatam hoga (ghadi ke hisaab se). */
+              public static long end(Context c) {
+                  long rem = remaining(c);
+                  return rem > 0 ? System.currentTimeMillis() + rem : 0L;
+              }
+
+              public static boolean active(Context c) {
+                  return remaining(c) > 0;
+              }
+
+              public static Set<String> pkgs(Context c) {
+                  return new HashSet<>(p(c).getStringSet("pkgs", new HashSet<String>()));
+              }
+
+              public static Set<String> lastPick(Context c) {
+                  Set<String> s = p(c).getStringSet("last", null);
+                  return s == null ? null : new HashSet<>(s);
+              }
+
+              public static int lastMinutes(Context c) {
+                  return p(c).getInt("mins", 60);
+              }
+
+              public static void start(Context c, Set<String> pkgs, int minutes) {
+                  long ms = minutes * 60_000L;
+                  long nowEl = android.os.SystemClock.elapsedRealtime();
+                  p(c).edit()
+                          .putStringSet("pkgs", new HashSet<>(pkgs))
+                          .putStringSet("last", new HashSet<>(pkgs))
+                          .putInt("mins", minutes)
+                          .putInt("sessionMins", minutes)
+                          .putLong("endEl", nowEl + ms)
+                          .putLong("remain", ms)
+                          .putLong("lastEl", nowEl)
+                          .putInt("boot", bootCount(c))
+                          .commit();
+              }
+
+              /** Session poora hone par: streak aur aaj ke focus minute badhao. */
+              public static void completeSession(Context c) {
+                  SharedPreferences sp = p(c);
+                  long today = LocalDate.now().toEpochDay();
+                  int mins = sp.getInt("sessionMins", 0);
+                  long lastDay = sp.getLong("streakDay", -10);
+                  int streak = sp.getInt("streak", 0);
+                  if (lastDay == today) {
+                      // aaj pehle hi gina ja chuka
+                  } else if (lastDay == today - 1) {
+                      streak++;
+                  } else {
+                      streak = 1;
+                  }
+                  int focusToday = sp.getLong("focusDay", -1) == today ? sp.getInt("focusMins", 0) : 0;
+                  sp.edit()
+                          .putLong("endEl", 0L)
+                          .putLong("remain", 0L)
+                          .putInt("sessionMins", 0)
+                          .putLong("streakDay", today)
+                          .putInt("streak", streak)
+                          .putLong("focusDay", today)
+                          .putInt("focusMins", focusToday + mins)
+                          .commit();
+              }
+
+              public static int streak(Context c) {
+                  SharedPreferences sp = p(c);
+                  long today = LocalDate.now().toEpochDay();
+                  long lastDay = sp.getLong("streakDay", -10);
+                  if (lastDay == today || lastDay == today - 1) return sp.getInt("streak", 0);
+                  return 0;
+              }
+
+              public static int focusToday(Context c) {
+                  SharedPreferences sp = p(c);
+                  long today = LocalDate.now().toEpochDay();
+                  return sp.getLong("focusDay", -1) == today ? sp.getInt("focusMins", 0) : 0;
+              }
+
+              // ================= Daily limits =================
+
+              /** pkg -> minute */
+              public static Map<String, Integer> limits(Context c) {
+                  Map<String, Integer> m = new HashMap<>();
+                  for (String s : p(c).getStringSet("limits", new HashSet<String>())) {
+                      int i = s.lastIndexOf('|');
+                      if (i <= 0) continue;
+                      try {
+                          m.put(s.substring(0, i), Integer.parseInt(s.substring(i + 1)));
+                      } catch (NumberFormatException ignored) {
+                      }
+                  }
+                  return m;
+              }
+
+              public static void setLimit(Context c, String pkg, int minutes) {
+                  Map<String, Integer> m = limits(c);
+                  if (minutes <= 0) m.remove(pkg);
+                  else m.put(pkg, minutes);
+                  Set<String> out = new HashSet<>();
+                  for (Map.Entry<String, Integer> e : m.entrySet()) out.add(e.getKey() + "|" + e.getValue());
+                  p(c).edit().putStringSet("limits", out).commit();
+              }
+
+              // ================= Schedule =================
+
+              public static boolean schedOn(Context c) {
+                  return p(c).getBoolean("schedOn", false);
+              }
+
+              public static int schedStart(Context c) {
+                  return p(c).getInt("schedStart", 9 * 60);
+              }
+
+              public static int schedEnd(Context c) {
+                  return p(c).getInt("schedEnd", 17 * 60);
+              }
+
+              /** bit (Calendar.DAY_OF_WEEK - 1). Default: Som-Shani. */
+              public static int schedDays(Context c) {
+                  return p(c).getInt("schedDays", 0b1111110);
+              }
+
+              public static Set<String> schedPkgs(Context c) {
+                  return new HashSet<>(p(c).getStringSet("schedPkgs", new HashSet<String>()));
+              }
+
+              public static void saveSchedule(Context c, boolean on, int start, int end, int days, Set<String> pkgs) {
+                  p(c).edit()
+                          .putBoolean("schedOn", on)
+                          .putInt("schedStart", start)
+                          .putInt("schedEnd", end)
+                          .putInt("schedDays", days)
+                          .putStringSet("schedPkgs", new HashSet<>(pkgs))
+                          .commit();
+              }
+
+              /** Abhi shedule ka samay chal raha hai? */
+              public static boolean schedNow(Context c) {
+                  if (!schedOn(c) || schedPkgs(c).isEmpty()) return false;
+                  Calendar cal = Calendar.getInstance();
+                  int day = cal.get(Calendar.DAY_OF_WEEK) - 1;
+                  int m = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE);
+                  int s = schedStart(c), e = schedEnd(c);
+                  int days = schedDays(c);
+                  if (s == e) return false;
+                  if (s < e) {
+                      return ((days >> day) & 1) == 1 && m >= s && m < e;
+                  }
+                  // raat bhar wala (jaise 10 PM - 6 AM)
+                  if (m >= s) return ((days >> day) & 1) == 1;
+                  int prev = (day + 6) % 7;
+                  return m < e && ((days >> prev) & 1) == 1;
+              }
+
+              // ================= Shorts / strict =================
+
+              public static boolean blockYtShorts(Context c) {
+                  return p(c).getBoolean("ytShorts", true);
+              }
+
+              public static boolean blockIgReels(Context c) {
+                  return p(c).getBoolean("igReels", true);
+              }
+
+              public static boolean blockFbReels(Context c) {
+                  return p(c).getBoolean("fbReels", false);
+              }
+
+              public static boolean strict(Context c) {
+                  return p(c).getBoolean("strict", true);
+              }
+
+              public static void setFlag(Context c, String key, boolean v) {
+                  p(c).edit().putBoolean(key, v).commit();
+              }
+
+              /** Session ya shedule chal raha hai: sakhti wala samay. */
+              public static boolean lockedNow(Context c) {
+                  return active(c) || schedNow(c);
+              }
+
+              /** Background service ki zaroorat hai? */
+              public static boolean needsService(Context c) {
+                  return active(c) || (schedOn(c) && !schedPkgs(c).isEmpty()) || !limits(c).isEmpty();
+              }
+
+              // ================= samay dikhane ke helper =================
+
+              public static String left(long ms) {
+                  long m = (ms + 59_999L) / 60_000L;
+                  return mins(m);
+              }
+
+              public static String mins(long m) {
+                  if (m >= 60) {
+                      long h = m / 60;
+                      long r = m % 60;
+                      return r == 0 ? h + " घंटे" : h + " घंटे " + r + " मिनट";
+                  }
+                  return m + " मिनट";
+              }
+
+              public static String clock(long t) {
+                  return new SimpleDateFormat("h:mm a", Locale.ENGLISH).format(new Date(t));
+              }
+
+              public static String clockMin(int minOfDay) {
+                  int h = minOfDay / 60, m = minOfDay % 60;
+                  String ap = h < 12 ? "AM" : "PM";
+                  int h12 = h % 12 == 0 ? 12 : h % 12;
+                  return String.format(Locale.ENGLISH, "%d:%02d %s", h12, m, ap);
+              }
+
+              public static String minutesLabel(int m) {
+                  if (m < 60) return m + " मिनट";
+                  if (m == 60) return "1 घंटा";
+                  if (m % 60 == 0) return (m / 60) + " घंटे";
+                  return mins(m);
+              }
+          }
+          ENDOFFILE
+          mkdir -p FocusLock/app/src/main/java/com/rakesh/focuslock
+          cat > FocusLock/app/src/main/java/com/rakesh/focuslock/Usage.java <<'ENDOFFILE'
+          package com.rakesh.focuslock;
+
+          import android.app.usage.UsageEvents;
+          import android.app.usage.UsageStatsManager;
+          import android.content.Context;
+
+          import java.util.Calendar;
+          import java.util.HashMap;
+          import java.util.Map;
+
+          /** Aaj (raat 12 baje se) har app kitni der chala. */
+          public final class Usage {
+
+              private Usage() {}
+
+              public static long startOfDay() {
+                  Calendar c = Calendar.getInstance();
+                  c.set(Calendar.HOUR_OF_DAY, 0);
+                  c.set(Calendar.MINUTE, 0);
+                  c.set(Calendar.SECOND, 0);
+                  c.set(Calendar.MILLISECOND, 0);
+                  return c.getTimeInMillis();
+              }
+
+              /** pkg -> milliseconds */
+              public static Map<String, Long> today(Context ctx) {
+                  Map<String, Long> out = new HashMap<>();
+                  long now = System.currentTimeMillis();
+                  try {
+                      UsageStatsManager usm = (UsageStatsManager) ctx.getSystemService(Context.USAGE_STATS_SERVICE);
+                      UsageEvents ev = usm.queryEvents(startOfDay(), now);
+                      UsageEvents.Event e = new UsageEvents.Event();
+                      String cur = null;
+                      long since = 0;
+                      while (ev.hasNextEvent()) {
+                          ev.getNextEvent(e);
+                          int t = e.getEventType();
+                          long ts = e.getTimeStamp();
+                          if (t == UsageEvents.Event.MOVE_TO_FOREGROUND) {
+                              if (cur != null) add(out, cur, ts - since);
+                              cur = e.getPackageName();
+                              since = ts;
+                          } else if (t == UsageEvents.Event.MOVE_TO_BACKGROUND) {
+                              if (cur != null && cur.equals(e.getPackageName())) {
+                                  add(out, cur, ts - since);
+                                  cur = null;
+                              }
+                          } else if (t == UsageEvents.Event.SCREEN_NON_INTERACTIVE) {
+                              if (cur != null) add(out, cur, ts - since);
+                              cur = null;
+                          }
+                      }
+                      if (cur != null) add(out, cur, now - since);
+                  } catch (Exception ignored) {
+                  }
+                  out.remove(ctx.getPackageName());
+                  return out;
+              }
+
+              private static void add(Map<String, Long> m, String pkg, long ms) {
+                  if (ms <= 0) return;
+                  Long old = m.get(pkg);
+                  m.put(pkg, (old == null ? 0L : old) + ms);
+              }
+          }
+          ENDOFFILE
+          mkdir -p FocusLock/app/src/main/res/drawable
+          cat > FocusLock/app/src/main/res/drawable/ic_launcher_bg.xml <<'ENDOFFILE'
+          <?xml version="1.0" encoding="utf-8"?>
+          <shape xmlns:android="http://schemas.android.com/apk/res/android"
+              android:shape="rectangle">
+              <solid android:color="#FF2D6A4F" />
+          </shape>
+          ENDOFFILE
+          mkdir -p FocusLock/app/src/main/res/drawable
+          cat > FocusLock/app/src/main/res/drawable/ic_launcher_fg.xml <<'ENDOFFILE'
+          <?xml version="1.0" encoding="utf-8"?>
+          <inset xmlns:android="http://schemas.android.com/apk/res/android"
+              android:drawable="@drawable/ic_lock_white"
+              android:inset="30dp" />
+          ENDOFFILE
+          mkdir -p FocusLock/app/src/main/res/drawable
+          cat > FocusLock/app/src/main/res/drawable/ic_lock_white.xml <<'ENDOFFILE'
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="24dp"
+              android:height="24dp"
+              android:viewportWidth="24"
+              android:viewportHeight="24">
+              <path
+                  android:fillColor="#FFFFFFFF"
+                  android:pathData="M18,8h-1V6c0,-2.76 -2.24,-5 -5,-5S7,3.24 7,6v2H6c-1.1,0 -2,0.9 -2,2v10c0,1.1 0.9,2 2,2h12c1.1,0 2,-0.9 2,-2V10c0,-1.1 -0.9,-2 -2,-2zM12,17c-1.1,0 -2,-0.9 -2,-2s0.9,-2 2,-2 2,0.9 2,2 -0.9,2 -2,2zM15.1,8H8.9V6c0,-1.71 1.39,-3.1 3.1,-3.1 1.71,0 3.1,1.39 3.1,3.1v2z" />
+          </vector>
+          ENDOFFILE
+          mkdir -p FocusLock/app/src/main/res/mipmap-anydpi-v26
+          cat > FocusLock/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml <<'ENDOFFILE'
+          <?xml version="1.0" encoding="utf-8"?>
+          <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+              <background android:drawable="@drawable/ic_launcher_bg" />
+              <foreground android:drawable="@drawable/ic_launcher_fg" />
+          </adaptive-icon>
+          ENDOFFILE
+          mkdir -p FocusLock/app/src/main/res/values
+          cat > FocusLock/app/src/main/res/values/strings.xml <<'ENDOFFILE'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <string name="app_name">फ़ोकस लॉक</string>
+              <string name="a11y_name">फ़ोकस लॉक – Shorts/Reels ब्लॉक</string>
+              <string name="a11y_desc">यह सेवा YouTube Shorts, Instagram Reels और Facebook Reels खुलते ही उन्हें बंद करती है। सख़्त मोड चालू हो तो लॉक के दौरान इस ऐप को हटाने या रोकने वाली सेटिंग नहीं खुलने देती। यह सिर्फ़ स्क्रीन के हिस्सों की पहचान (ID) देखती है, कोई जानकारी सेव या कहीं नहीं भेजती।</string>
+          </resources>
+          ENDOFFILE
+          mkdir -p FocusLock/app/src/main/res/xml
+          cat > FocusLock/app/src/main/res/xml/accessibility_config.xml <<'ENDOFFILE'
+          <?xml version="1.0" encoding="utf-8"?>
+          <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+              android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewScrolled"
+              android:accessibilityFeedbackType="feedbackGeneric"
+              android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows"
+              android:canRetrieveWindowContent="true"
+              android:canPerformGestures="false"
+              android:description="@string/a11y_desc"
+              android:notificationTimeout="200" />
+          ENDOFFILE
+          mkdir -p FocusLock
+          cat > FocusLock/build.gradle <<'ENDOFFILE'
+          plugins {
+              id 'com.android.application' version '8.5.2' apply false
+          }
+          ENDOFFILE
+          mkdir -p FocusLock
+          cat > FocusLock/gradle.properties <<'ENDOFFILE'
+          org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
+          android.nonTransitiveRClass=true
+          ENDOFFILE
+          mkdir -p FocusLock
+          cat > FocusLock/settings.gradle <<'ENDOFFILE'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "FocusLock"
+          include ':app'
+          ENDOFFILE
+          base64 -d > FocusLock/app/focuslock.jks <<'ENDOFFILE'
+          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
+          ENDOFFILE
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: APK banao
+        working-directory: FocusLock
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: APK ka naam badlo
+        run: |
+          VER=$(grep versionName FocusLock/app/build.gradle | grep -o '"[^"]*"' | tr -d '"')
+          cp FocusLock/app/build/outputs/apk/debug/app-debug.apk "FocusLock-v${VER}.apk"
+          echo "VER=$VER" >> $GITHUB_ENV
+
+      - name: Release me APK daalo
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VER }}-build${{ github.run_number }}
+          name: FocusLock v${{ env.VER }} (build ${{ github.run_number }})
+          files: FocusLock-v${{ env.VER }}.apk
