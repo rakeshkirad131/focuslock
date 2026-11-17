@@ -1,4 +1,4 @@
-name: Build FocusLock APK
+name: Build Lagaam APK
 
 on:
   push:
@@ -16,6 +16,17 @@ jobs:
       - name: Project files banao
         run: |
           rm -rf FocusLock
+          mkdir -p FocusLock
+          cat > FocusLock/RELEASE_NOTES.md <<'ENDOFFILE'
+          [en]
+          - Automatic updates: Lagaam now finds new versions by itself and updates the app
+          - Before each update you see what is new, and after the update a short summary
+          - Your lock, limits and settings stay safe during the update
+          [hi]
+          - अपने-आप अपडेट: नया वर्शन आते ही Lagaam खुद ढूँढकर ऐप अपडेट करेगा
+          - हर अपडेट से पहले दिखेगा कि क्या नया है, और अपडेट के बाद छोटा सा सार
+          - अपडेट के दौरान आपका लॉक, सीमा और सेटिंग सुरक्षित रहेंगे
+          ENDOFFILE
           mkdir -p FocusLock/app
           cat > FocusLock/app/build.gradle <<'ENDOFFILE'
           plugins {
@@ -30,8 +41,8 @@ jobs:
                   applicationId "com.rakesh.focuslock"
                   minSdk 26
                   targetSdk 34
-                  versionCode 16
-                  versionName "3.12"
+                  versionCode 20
+                  versionName "3.16"
               }
 
               // v3.7: do roop. Lite me Accessibility/Notification service nahi (Play Protect chalu rehte install).
@@ -101,6 +112,9 @@ jobs:
               <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
               <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
               <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+              <!-- v3.16: apne-aap update (GitHub se naya version) -->
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
               <queries>
                   <intent>
@@ -202,6 +216,15 @@ jobs:
                       </intent-filter>
                   </receiver>
 
+                  <service
+                      android:name=".UpdateJob"
+                      android:exported="false"
+                      android:permission="android.permission.BIND_JOB_SERVICE" />
+
+                  <receiver
+                      android:name=".UpdateReceiver"
+                      android:exported="false" />
+
                   <receiver
                       android:name=".BootReceiver"
                       android:exported="true">
@@ -252,8 +275,8 @@ jobs:
                               : L.t(c, "🔒 शेड्यूल लॉक चल रहा है। अभी इसे बंद न करें।",
                               "🔒 A schedule lock is running. Don't turn this off now.");
                   }
-                  return L.t(c, "इसे बंद करने पर फ़ोकस लॉक हटाया जा सकेगा।",
-                          "Turning this off lets FocusLock be removed.");
+                  return L.t(c, "इसे बंद करने पर Lagaam हटाया जा सकेगा।",
+                          "Turning this off lets Lagaam be removed.");
               }
           }
           ENDOFFILE
@@ -712,7 +735,7 @@ jobs:
 
               private Notification buildNotification(String text) {
                   NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-                  NotificationChannel ch = new NotificationChannel(CHANNEL, "फ़ोकस लॉक",
+                  NotificationChannel ch = new NotificationChannel(CHANNEL, "Lagaam",
                           NotificationManager.IMPORTANCE_LOW);
                   nm.createNotificationChannel(ch);
                   PendingIntent pi = PendingIntent.getActivity(this, 0,
@@ -720,7 +743,7 @@ jobs:
                   lastNotifText = text;
                   return new Notification.Builder(this, CHANNEL)
                           .setSmallIcon(R.drawable.ic_lock_white)
-                          .setContentTitle(L.t(this, "🔒 फ़ोकस लॉक", "🔒 FocusLock"))
+                          .setContentTitle(L.t(this, "🔒 Lagaam", "🔒 Lagaam"))
                           .setContentText(text)
                           .setStyle(new Notification.BigTextStyle().bigText(text))
                           .setOngoing(true)
@@ -812,9 +835,9 @@ jobs:
                               new Intent(this, MainActivity.class), PendingIntent.FLAG_IMMUTABLE);
                       int streak = Store.streak(this);
                       String body = L.t(this, L.minutesLabel(this, mins) + " का फ़ोकस पूरा। सारे ऐप खुल गए।"
-                                      + (streak > 0 ? " 🔥 " + streak + " दिन लगातार" : ""),
+                                      + (streak > 0 ? " · " + streak + " दिन लगातार" : ""),
                               L.minutesLabel(this, mins) + " of focus done. All apps are open again."
-                                      + (streak > 0 ? " 🔥 " + streak + "-day streak" : ""));
+                                      + (streak > 0 ? " · " + streak + "-day streak" : ""));
                       nm.notify(31, new Notification.Builder(this, "focus_done")
                               .setSmallIcon(R.drawable.ic_lock_white)
                               .setContentTitle(L.t(this, "🎉 शाबाश! फ़ोकस पूरा हुआ", "🎉 Well done! Focus complete"))
@@ -873,11 +896,15 @@ jobs:
           import android.content.Context;
           import android.content.Intent;
 
-          /** Phone restart hone par lock/seema/shedule dobara shuru karta hai. */
+          /** Phone restart ya ऐप update hone par lock/seema/shedule dobara shuru karta hai. */
           public class BootReceiver extends BroadcastReceiver {
               @Override
               public void onReceive(Context context, Intent intent) {
                   BlockService.ensure(context);
+                  Updater.schedule(context);
+                  if (intent != null && Intent.ACTION_MY_PACKAGE_REPLACED.equals(intent.getAction())) {
+                      Updater.onUpdated(context);   // v3.16: "update ho gaya, ye naya hai"
+                  }
               }
           }
           ENDOFFILE
@@ -965,7 +992,7 @@ jobs:
                           int streak = Store.streak(c);
                           status = L.t(c, "आज फ़ोकस: " + L.minutesLabel(c, Store.focusToday(c)),
                                   "Focus today: " + L.minutesLabel(c, Store.focusToday(c)))
-                                  + (streak > 0 ? "  🔥" + streak : "");
+                                  + (streak > 0 ? L.t(c, " · " + streak + " दिन लगातार", " · " + streak + "-day streak") : "");
                           btn = L.t(c, "🍅 25 मिनट फ़ोकस", "🍅 25 min focus");
                           quick = true;
                       }
@@ -974,7 +1001,7 @@ jobs:
                       lastKey = key;
 
                       RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.widget_focus);
-                      v.setTextViewText(R.id.w_title, L.t(c, "🔒 फ़ोकस लॉक", "🔒 FocusLock"));
+                      v.setTextViewText(R.id.w_title, L.t(c, "🔒 Lagaam", "🔒 Lagaam"));
                       v.setTextViewText(R.id.w_status, status);
                       v.setTextViewText(R.id.w_btn, btn);
 
@@ -1167,7 +1194,45 @@ jobs:
               }
 
               public static String t(Context c, String hi, String en) {
-                  return en(c) ? en : hi;
+                  return clean(en(c) ? en : hi);
+              }
+
+              /** v3.15: emoji wale chinh hatao (saaf, insaani design). ✓ ✕ ₹ → jaise chinh rehte hain. */
+              public static boolean isEmoji(int cp) {
+                  if (cp == 0x2713 || cp == 0x2715) return false;           // ✓ ✕
+                  return (cp >= 0x1F000 && cp <= 0x1FAFF)
+                          || (cp >= 0x2600 && cp <= 0x27BF)
+                          || (cp >= 0x2300 && cp <= 0x23FF)
+                          || (cp >= 0x2B00 && cp <= 0x2BFF)
+                          || (cp >= 0xE0020 && cp <= 0xE007F)
+                          || cp == 0xFE0F || cp == 0x20E3 || cp == 0x3030 || cp == 0x303D;
+              }
+
+              public static String clean(String s) {
+                  if (s == null || s.isEmpty()) return s;
+                  StringBuilder sb = new StringBuilder(s.length());
+                  int[] cps = s.codePoints().toArray();
+                  boolean removed = false;
+                  for (int i = 0; i < cps.length; i++) {
+                      int cp = cps[i];
+                      if (isEmoji(cp)) {
+                          removed = true;
+                          continue;
+                      }
+                      if (cp == 0x200D) {
+                          boolean prevE = i > 0 && isEmoji(cps[i - 1]);
+                          boolean nextE = i + 1 < cps.length && isEmoji(cps[i + 1]);
+                          if (prevE || nextE) {
+                              removed = true;
+                              continue;
+                          }
+                      }
+                      sb.appendCodePoint(cp);
+                  }
+                  if (!removed) return s;
+                  String out = sb.toString().replaceAll("[ \\t]{2,}", " ");
+                  out = out.replaceAll("(?m)^[ \\t]+", "").replaceAll("\\( ", "(").replaceAll(" \\)", ")");
+                  return out.replaceAll("^\\s+", "");
               }
 
               public static String mins(Context c, long m) {
@@ -1209,6 +1274,7 @@ jobs:
           import android.app.AppOpsManager;
           import android.app.TimePickerDialog;
           import android.content.ComponentName;
+          import android.content.Context;
           import android.content.Intent;
           import android.content.pm.PackageManager;
           import android.content.pm.ResolveInfo;
@@ -1316,6 +1382,7 @@ jobs:
                           != PackageManager.PERMISSION_GRANTED) {
                       requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 1);
                   }
+                  Updater.schedule(this);   // v3.16: background me naya version dekhna
               }
 
               @Override
@@ -1325,6 +1392,8 @@ jobs:
                   schedDraftLoaded = false;
                   rebuild();
                   handleQuick();
+                  UpdateReceiver.appVisible = true;
+                  if (!showWhatsNew()) checkUpdate();
               }
 
               @Override
@@ -1352,6 +1421,122 @@ jobs:
               protected void onPause() {
                   super.onPause();
                   stopTicker();
+                  UpdateReceiver.appVisible = false;
+              }
+
+              // ================= v3.16: apne-aap update =================
+
+              private static Updater.Info pendingUpdate;
+              private static boolean updateBusy;
+              private AlertDialog updateDialog;
+
+              /** Update ke baad pehli baar khulne par: "kya naya hai". */
+              private boolean showWhatsNew() {
+                  String n = Updater.freshNotes(this);
+                  if (n == null) return false;
+                  Updater.markNotesShown(this);
+                  new AlertDialog.Builder(this)
+                          .setTitle(t("Lagaam v" + Updater.currentVersion(this) + " में अपडेट हो गया",
+                                  "Lagaam updated to v" + Updater.currentVersion(this)))
+                          .setMessage(L.clean(t("क्या नया है:\n\n", "What's new:\n\n")
+                                  + (n.isEmpty() ? t("छोटे सुधार", "Small improvements") : n)))
+                          .setPositiveButton(t("ठीक है", "OK"), null)
+                          .show();
+                  return true;
+              }
+
+              private void checkUpdate() {
+                  if (updateBusy) return;
+                  if (pendingUpdate != null && Updater.isNewer(this, pendingUpdate)) {
+                      showUpdate(pendingUpdate);
+                      return;
+                  }
+                  if (!Updater.dueForCheck(this)) return;
+                  updateBusy = true;
+                  new Thread(() -> {
+                      Updater.Info i = Updater.fetch(getApplicationContext());
+                      runOnUiThread(() -> {
+                          updateBusy = false;
+                          if (Updater.isNewer(this, i)) {
+                              pendingUpdate = i;
+                              if (!isFinishing()) showUpdate(i);
+                          }
+                      });
+                  }).start();
+              }
+
+              /** Sandesh: "ऐप अपडेट होगा" + kya naya hai + download progress. Download apne-aap shuru. */
+              private void showUpdate(Updater.Info i) {
+                  if (updateDialog != null && updateDialog.isShowing()) return;
+                  LinearLayout box = new LinearLayout(this);
+                  box.setOrientation(LinearLayout.VERTICAL);
+                  box.setPadding(dp(22), dp(8), dp(22), dp(4));
+                  box.addView(text(t("Lagaam अब नए वर्शन में अपडेट होगा.", "Lagaam will now update to the new version."),
+                          15, ui.text, false));
+                  String n = i.notes(this);
+                  TextView whats = text(t("क्या नया है:", "What's new:"), 15, ui.text, true);
+                  whats.setPadding(0, dp(14), 0, dp(4));
+                  box.addView(whats);
+                  box.addView(text(n.isEmpty() ? t("छोटे सुधार", "Small improvements") : n, 14, ui.muted, false));
+                  final TextView status = text("", 14, ui.accent, true);
+                  status.setPadding(0, dp(16), 0, dp(4));
+                  box.addView(status);
+                  final android.widget.ProgressBar bar = new android.widget.ProgressBar(this, null,
+                          android.R.attr.progressBarStyleHorizontal);
+                  bar.setMax(100);
+                  box.addView(bar);
+                  ScrollView sv = new ScrollView(this);
+                  sv.addView(box);
+
+                  AlertDialog.Builder b = new AlertDialog.Builder(this)
+                          .setTitle(t("नया अपडेट: v" + i.version, "New update: v" + i.version))
+                          .setView(sv)
+                          .setCancelable(false);
+                  if (!Updater.canInstall(this)) {
+                      // Pehli baar: Lagaam ko install ki anumati chahiye
+                      status.setText(L.clean(t("एक बार अनुमति दें: अगली स्क्रीन पर Lagaam के लिए \"Allow\" चालू करें, फिर वापस आएँ.",
+                              "Allow once: turn on \"Allow\" for Lagaam on the next screen, then come back.")));
+                      bar.setVisibility(View.GONE);
+                      b.setPositiveButton(t("अनुमति दें", "Allow"), (d, w) -> {
+                          try {
+                              startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                                      Uri.parse("package:" + getPackageName())));
+                          } catch (Exception e) {
+                              toast(t("सेटिंग नहीं खुली", "Could not open settings"));
+                          }
+                      });
+                      b.setNegativeButton(t("बाद में", "Later"), null);
+                      updateDialog = b.show();
+                      return;
+                  }
+                  status.setText(t("डाउनलोड शुरू हो रहा है…", "Starting download…"));
+                  b.setNegativeButton(t("पीछे चलने दें", "Run in background"), null);
+                  updateDialog = b.show();
+                  updateBusy = true;
+                  final Context app = getApplicationContext();
+                  new Thread(() -> Updater.downloadAndInstall(app, i, new Updater.Progress() {
+                      public void onProgress(int pc) {
+                          runOnUiThread(() -> {
+                              bar.setProgress(pc);
+                              status.setText(t("डाउनलोड हो रहा है… " + pc + "%", "Downloading… " + pc + "%"));
+                          });
+                      }
+
+                      public void onDone(boolean ok, String msg) {
+                          runOnUiThread(() -> {
+                              updateBusy = false;
+                              if (ok) {
+                                  bar.setProgress(100);
+                                  status.setText(t("इंस्टॉल हो रहा है… ऐप कुछ सेकंड में फिर खुलेगा.",
+                                          "Installing… the app will restart in a few seconds."));
+                              } else {
+                                  status.setText(t("अपडेट नहीं हो सका, बाद में फिर कोशिश होगी. ",
+                                          "Update failed, will try again later. ") + (msg == null ? "" : msg));
+                                  if (updateDialog != null) updateDialog.setCancelable(true);
+                              }
+                          });
+                      }
+                  })).start();
               }
 
               private String t(String hi, String en) {
@@ -1386,10 +1571,12 @@ jobs:
                   header.setPadding(dp(18), dp(18), dp(16), dp(10));
 
                   // v3.8: app ka gol nishaan
-                  TextView badge = text("🔒", 20, ui.onAccent, false);
-                  badge.setGravity(Gravity.CENTER);
+                  ImageView badge = new ImageView(this);
+                  badge.setImageResource(R.drawable.ic_lock_white);
+                  badge.setColorFilter(ui.onAccent);
+                  badge.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
                   badge.setBackground(Fx.raised(ui.accent2, ui.accent, Fx.shade(ui.accent, 0.6f), dp(15), dp(3)));
-                  badge.setPadding(0, 0, 0, dp(3));
+                  badge.setPadding(dp(10), dp(9), dp(10), dp(12));
                   badge.setElevation(dp(4));
                   LinearLayout.LayoutParams blp0 = new LinearLayout.LayoutParams(dp(44), dp(44));
                   blp0.setMargins(0, 0, dp(12), 0);
@@ -1397,14 +1584,17 @@ jobs:
 
                   LinearLayout titles = new LinearLayout(this);
                   titles.setOrientation(LinearLayout.VERTICAL);
-                  TextView appTitle = text(t("फ़ोकस लॉक", "FocusLock"), 24, ui.text, true);
+                  TextView appTitle = text(t("Lagaam", "Lagaam"), 24, ui.text, true);
                   appTitle.setLetterSpacing(0f);
                   titles.addView(appTitle);
-                  titles.addView(text(t("ध्यान आपका, नियम आपके", "Your focus, your rules")
-                          + (Edition.lite(this) ? " · Lite" : ""), 13, ui.muted, false));
+                  TextView sub = text(t("ध्यान आपका, नियम आपके", "Your focus, your rules")
+                          + (Edition.lite(this) ? " · Lite" : ""), 13, ui.muted, false);
+                  sub.setSingleLine(true);
+                  sub.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                  titles.addView(sub);
                   header.addView(titles, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
 
-                  TextView pro = pill(Pro.has(this) ? "⭐ Pro" : "⭐", tab == 5);
+                  TextView pro = pill(Pro.has(this) ? "Pro ✓" : "Pro", tab == 5);
                   pro.setOnClickListener(v -> {
                       tab = 5;
                       render();
@@ -1422,7 +1612,7 @@ jobs:
                   });
                   header.addView(lang);
                   String th = Store.theme(this);
-                  TextView theme = pill("🎨", false);
+                  TextView theme = pill(t("रंग", "Theme"), false);
                   theme.setOnClickListener(v -> chooseTheme());
                   LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(
                           LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -1493,12 +1683,11 @@ jobs:
                           }
                       }
                       Fx.press(item);
-                      TextView ic = text(NAV[i][0], sel ? 21 : 19, ui.text, false);
-                      ic.setGravity(Gravity.CENTER);
-                      if (!sel) ic.setAlpha(0.75f);
-                      item.addView(ic);
-                      TextView lb = text(L.en(this) ? NAV[i][2] : NAV[i][1], 11, sel ? ui.onAccent : ui.muted, sel);
+                      // v3.15: sirf naam, icon nahi
+                      TextView lb = text(L.en(this) ? NAV[i][2] : NAV[i][1], 14, sel ? ui.onAccent : ui.muted, true);
+                      lb.setTypeface(Fonts.head(this));
                       lb.setGravity(Gravity.CENTER);
+                      lb.setPadding(0, dp(6), 0, sel ? dp(9) : dp(6));
                       item.addView(lb);
                       item.setOnClickListener(v -> {
                           if (tab != idx) navPopped = idx;
@@ -1574,7 +1763,7 @@ jobs:
                           15, ui.muted, false));
                   c.addView(gap(14));
                   c.addView(stepRow(usage, t("1. ऐप उपयोग की अनुमति", "1. Usage access"),
-                          t("सूची में \"फ़ोकस लॉक\" चालू करें", "Turn on \"फ़ोकस लॉक\" in the list"),
+                          t("सूची में \"Lagaam\" चालू करें", "Turn on \"Lagaam\" in the list"),
                           v -> open(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))));
                   c.addView(gap(10));
                   c.addView(stepRow(overlay, t("2. दूसरे ऐप्स के ऊपर दिखाएँ", "2. Display over other apps"),
@@ -1605,8 +1794,8 @@ jobs:
                   LinearLayout c = softCard(ui.warnSoft);
                   c.addView(text(t("⚠️ अगर \"Restricted setting\" लिखा आए", "⚠️ If you see \"Restricted setting\""),
                           14, ui.warn, true));
-                  c.addView(text(t("Settings → Apps → फ़ोकस लॉक → ऊपर ⋮ → \"Allow restricted settings\" दबाएँ, फिर दोबारा कोशिश करें।",
-                          "Settings → Apps → फ़ोकस लॉक → top ⋮ → \"Allow restricted settings\", then try again."),
+                  c.addView(text(t("Settings → Apps → Lagaam → ऊपर ⋮ → \"Allow restricted settings\" दबाएँ, फिर दोबारा कोशिश करें।",
+                          "Settings → Apps → Lagaam → top ⋮ → \"Allow restricted settings\", then try again."),
                           13, ui.muted, false));
                   content.addView(c);
               }
@@ -1640,7 +1829,7 @@ jobs:
                   c.setOrientation(LinearLayout.VERTICAL);
                   c.setPadding(dp(14), dp(12), dp(14), dp(12));
                   c.setBackground(round(bg, 18));
-                  c.addView(text(icon + "  " + value, 18, color, true));
+                  c.addView(text(value, 18, color, true));
                   c.addView(text(label, 12, ui.muted, false));
                   return c;
               }
@@ -1904,8 +2093,8 @@ jobs:
                               .setMessage(t("इसके बिना कोई लॉक के बीच ऐप uninstall करके लॉक तोड़ सकता है। एक बार चालू करना काफ़ी है।",
                                       "Without it, someone could uninstall the app to break the lock. You only need to turn it on once."))
                               .setPositiveButton(t("हाँ, चालू करें", "Yes, turn on"), (d, w) -> askAdmin(
-                                      t("लॉक के दौरान फ़ोकस लॉक हटाया न जा सके। यह कोई जानकारी नहीं पढ़ता।",
-                                              "So FocusLock can't be removed during a lock. It reads no data.")))
+                                      t("लॉक के दौरान Lagaam हटाया न जा सके। यह कोई जानकारी नहीं पढ़ता।",
+                                              "So Lagaam can't be removed during a lock. It reads no data.")))
                               .setNegativeButton(t("बिना इसके शुरू करें", "Start without it"), (d, w) -> confirmStart())
                               .show();
                       return;
@@ -2187,8 +2376,8 @@ jobs:
                   st.addView(text(a11y ? t("✅ ब्लॉक सेवा चालू है", "✅ Block service is ON")
                           : t("❌ ब्लॉक सेवा बंद है", "❌ Block service is OFF"), 17, a11y ? ui.accent : ui.danger, true));
                   st.addView(text(a11y ? t("Shorts, websites और सख़्त मोड काम करेंगे।", "Shorts, websites and strict mode will work.")
-                                  : t("यहाँ टैप करें → Installed/Downloaded apps → \"फ़ोकस लॉक – Shorts/Reels ब्लॉक\" → ON",
-                                  "Tap here → Installed/Downloaded apps → \"फ़ोकस लॉक – Shorts/Reels ब्लॉक\" → ON"),
+                                  : t("यहाँ टैप करें → Installed/Downloaded apps → \"Lagaam – Shorts/Reels block\" → ON",
+                                  "Tap here → Installed/Downloaded apps → \"Lagaam – Shorts/Reels block\" → ON"),
                           13, ui.muted, false));
                   if (!a11y) st.setOnClickListener(v -> open(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
                   content.addView(st);
@@ -2453,8 +2642,8 @@ jobs:
                       LinearLayout up = softCard(ui.warnSoft);
                       up.addView(text(t("⚠️ एक बार दोबारा चालू करें (नई सुरक्षा के लिए)। यहाँ टैप करें।",
                               "⚠️ Turn it on once more (for the new protection). Tap here."), 13, ui.warn, true));
-                      up.setOnClickListener(v -> askAdmin(t("लॉक के दौरान फ़ोकस लॉक हटाया न जा सके।",
-                              "So FocusLock can't be removed during a lock.")));
+                      up.setOnClickListener(v -> askAdmin(t("लॉक के दौरान Lagaam हटाया न जा सके।",
+                              "So Lagaam can't be removed during a lock.")));
                       c.addView(up);
                   }
                   c.addView(text(t("चालू होने पर ऐप सीधे uninstall नहीं होगा। लॉक के दौरान इसे बंद करने की कोशिश पर फ़ोन home पर चला जाएगा और screen lock हो जाएगी। लॉक के दौरान यह बंद भी नहीं होगा।",
@@ -2476,8 +2665,8 @@ jobs:
                           Intent i = new Intent(android.app.admin.DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
                           i.putExtra(android.app.admin.DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin);
                           i.putExtra(android.app.admin.DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-                                  t("इससे फ़ोकस लॉक बिना अनुमति हटाया नहीं जा सकेगा। यह कोई जानकारी नहीं पढ़ता।",
-                                          "This stops FocusLock from being removed without permission. It reads no data."));
+                                  t("इससे Lagaam बिना अनुमति हटाया नहीं जा सकेगा। यह कोई जानकारी नहीं पढ़ता।",
+                                          "This stops Lagaam from being removed without permission. It reads no data."));
                           open(i);
                       }
                   });
@@ -2619,8 +2808,8 @@ jobs:
                           13, ui.muted, false));
                   if (!access) {
                       LinearLayout w = softCard(ui.warnSoft);
-                      w.addView(text(t("पहले अनुमति दें: यहाँ टैप करें → \"फ़ोकस लॉक – सूचना रोक\" → ON",
-                              "Allow first: tap here → \"फ़ोकस लॉक – सूचना रोक\" → ON"), 13, ui.warn, true));
+                      w.addView(text(t("पहले अनुमति दें: यहाँ टैप करें → \"Lagaam – Notification hold\" → ON",
+                              "Allow first: tap here → \"Lagaam – Notification hold\" → ON"), 13, ui.warn, true));
                       w.setOnClickListener(v -> open(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")));
                       c.addView(w);
                   }
@@ -2671,24 +2860,24 @@ jobs:
                   String en;
                   if (m.contains("xiaomi") || m.contains("redmi") || m.contains("poco")) {
                       brand = "Xiaomi / Redmi / POCO";
-                      hi = "1. Settings → Apps → फ़ोकस लॉक → Autostart ON\n2. Battery saver → No restrictions\n3. Recent apps में फ़ोकस लॉक को नीचे खींचकर 🔒 lock करें";
-                      en = "1. Settings → Apps → फ़ोकस लॉक → Autostart ON\n2. Battery saver → No restrictions\n3. In Recent apps, pull फ़ोकस लॉक down and tap 🔒";
+                      hi = "1. Settings → Apps → Lagaam → Autostart ON\n2. Battery saver → No restrictions\n3. Recent apps में Lagaam को नीचे खींचकर 🔒 lock करें";
+                      en = "1. Settings → Apps → Lagaam → Autostart ON\n2. Battery saver → No restrictions\n3. In Recent apps, pull Lagaam down and tap 🔒";
                   } else if (m.contains("vivo") || m.contains("iqoo")) {
                       brand = "Vivo / iQOO";
-                      hi = "1. Settings → Battery → Background power consumption → फ़ोकस लॉक → Allow\n2. i Manager → App manager → Autostart → फ़ोकस लॉक ON\n3. Ultra power saving mode बंद रखें";
-                      en = "1. Settings → Battery → Background power consumption → फ़ोकस लॉक → Allow\n2. i Manager → App manager → Autostart → फ़ोकस लॉक ON\n3. Keep Ultra power saving off";
+                      hi = "1. Settings → Battery → Background power consumption → Lagaam → Allow\n2. i Manager → App manager → Autostart → Lagaam ON\n3. Ultra power saving mode बंद रखें";
+                      en = "1. Settings → Battery → Background power consumption → Lagaam → Allow\n2. i Manager → App manager → Autostart → Lagaam ON\n3. Keep Ultra power saving off";
                   } else if (m.contains("oppo") || m.contains("realme") || m.contains("oneplus")) {
                       brand = "OPPO / Realme / OnePlus";
-                      hi = "1. Settings → Apps → फ़ोकस लॉक → Battery usage\n2. Allow background activity + Allow auto launch ON\n3. Recent apps में ऐप को 🔒 lock करें";
-                      en = "1. Settings → Apps → फ़ोकस लॉक → Battery usage\n2. Turn on Allow background activity + Allow auto launch\n3. Lock the app 🔒 in Recent apps";
+                      hi = "1. Settings → Apps → Lagaam → Battery usage\n2. Allow background activity + Allow auto launch ON\n3. Recent apps में ऐप को 🔒 lock करें";
+                      en = "1. Settings → Apps → Lagaam → Battery usage\n2. Turn on Allow background activity + Allow auto launch\n3. Lock the app 🔒 in Recent apps";
                   } else if (m.contains("samsung")) {
                       brand = "Samsung";
-                      hi = "1. Settings → Battery → Background usage limits → Never sleeping apps में फ़ोकस लॉक जोड़ें\n2. App info → Battery → Unrestricted";
-                      en = "1. Settings → Battery → Background usage limits → add फ़ोकस लॉक to Never sleeping apps\n2. App info → Battery → Unrestricted";
+                      hi = "1. Settings → Battery → Background usage limits → Never sleeping apps में Lagaam जोड़ें\n2. App info → Battery → Unrestricted";
+                      en = "1. Settings → Battery → Background usage limits → add Lagaam to Never sleeping apps\n2. App info → Battery → Unrestricted";
                   } else {
                       brand = Build.MANUFACTURER == null ? "Android" : Build.MANUFACTURER;
-                      hi = "1. Settings → Apps → फ़ोकस लॉक → Battery → Unrestricted\n2. अगर Autostart का विकल्प हो, तो ON करें";
-                      en = "1. Settings → Apps → फ़ोकस लॉक → Battery → Unrestricted\n2. If there is an Autostart option, turn it on";
+                      hi = "1. Settings → Apps → Lagaam → Battery → Unrestricted\n2. अगर Autostart का विकल्प हो, तो ON करें";
+                      en = "1. Settings → Apps → Lagaam → Battery → Unrestricted\n2. If there is an Autostart option, turn it on";
                   }
                   LinearLayout c = card();
                   c.addView(text(t("📱 आपके फ़ोन (" + brand + ") के लिए बैटरी सेटिंग", "📱 Battery settings for your phone (" + brand + ")"), 16, ui.text, true));
@@ -2712,7 +2901,7 @@ jobs:
               /** looseWhenOn: true = ON karna dheel dena hai (jaise "sirf lock ke samay"). */
               private View guardSwitch(String label, boolean value, final String key, final boolean looseWhenOn) {
                   Switch s = new Switch(this);
-                  s.setText(label + "  ");
+                  s.setText(L.clean(label) + "  ");
                   s.setTextSize(15);
                   s.setChecked(value);
                   s.setPadding(0, dp(10), 0, dp(10));
@@ -2964,7 +3153,7 @@ jobs:
                   LinearLayout best = card();
                   best.addView(text(t("सबसे अच्छे दिन", "Your best days"), 16, ui.text, true));
                   best.addView(gap(6));
-                  String[] medal = {"🥇", "🥈", "🥉"};
+                  String[] medal = {"#1", "#2", "#3"};
                   int shown = 0;
                   for (Score.Day d : ranked) {
                       if (shown >= 7) break;
@@ -3045,7 +3234,7 @@ jobs:
                       cell.setGravity(Gravity.CENTER_HORIZONTAL);
                       cell.setPadding(dp(6), dp(10), dp(6), dp(10));
                       cell.setBackground(round(on ? ui.warnSoft : ui.bg, 14));
-                      TextView ic = text(on ? b[0] : "🔒", 24, ui.text, false);
+                      TextView ic = text(on ? "●" : "○", 22, on ? ui.accent : ui.muted, true);
                       ic.setGravity(Gravity.CENTER);
                       if (!on) ic.setAlpha(0.5f);
                       cell.addView(ic);
@@ -3264,7 +3453,7 @@ jobs:
 
                   LinearLayout top = card();
                   top.setBackground(grad(ui.accent, ui.accent2, 20));
-                  TextView title = text(t("⭐ फ़ोकस लॉक Pro", "⭐ FocusLock Pro"), 22, ui.onAccent, true);
+                  TextView title = text(t("⭐ Lagaam Pro", "⭐ Lagaam Pro"), 22, ui.onAccent, true);
                   title.setOnLongClickListener(v -> {
                       askAdmin();
                       return true;
@@ -3300,8 +3489,8 @@ jobs:
                       f.addView(text("•  " + t(x[0], x[1]), 14, ui.text, false));
                   }
                   f.addView(gap(6));
-                  f.addView(text(liteEd ? t("Free में भी: फ़ोकस लॉक, widget, 1 शेड्यूल।", "Free includes: focus lock, widget, 1 schedule.")
-                          : t("Free में भी: फ़ोकस लॉक, Shorts/Reels ब्लॉक, बंद ऐप की website ब्लॉक, widget, 1 शेड्यूल।",
+                  f.addView(text(liteEd ? t("Free में भी: Lagaam, widget, 1 शेड्यूल।", "Free includes: focus lock, widget, 1 schedule.")
+                          : t("Free में भी: Lagaam, Shorts/Reels ब्लॉक, बंद ऐप की website ब्लॉक, widget, 1 शेड्यूल।",
                           "Free includes: focus lock, Shorts/Reels block, locked apps' websites, widget, 1 schedule."),
                           12, ui.muted, false));
                   content.addView(f);
@@ -3326,15 +3515,17 @@ jobs:
                       row.addView(text(nm, 15, ui.text, true),
                               new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
                       row.addView(text("₹" + rs, 18, ui.accent, true));
-                      row.setOnClickListener(v -> payUpi(rs, nm, dev));
+                      row.setOnClickListener(v -> choosePay(rs, nm, dev));
                       LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                               LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
                       lp.setMargins(0, dp(4), 0, dp(4));
                       pl.addView(row, lp);
                   }
-                  pl.addView(text(t("टैप करते ही GPay / PhonePe / Paytm खुलेगा।", "Tapping opens GPay / PhonePe / Paytm."),
+                  pl.addView(text(t("टैप करें: UPI ऐप से भेजें, या UPI ID कॉपी करके खुद भेजें।", "Tap: pay via a UPI app, or copy the UPI ID and pay yourself."),
                           12, ui.muted, false));
                   content.addView(pl);
+
+                  renderQrCard();
 
                   // phone id + whatsapp
                   LinearLayout id = card();
@@ -3349,8 +3540,8 @@ jobs:
                   TextView copy = pill(t("📋 कॉपी", "📋 Copy"), false);
                   copy.setOnClickListener(v -> copyText(dev));
                   TextView wa = pill(t("💬 WhatsApp पर भेजें", "💬 Send on WhatsApp"), true);
-                  wa.setOnClickListener(v -> openWhatsApp(t("नमस्ते, मैंने फ़ोकस लॉक Pro के लिए पैसे भेजे हैं। फ़ोन ID: ",
-                          "Hi, I've paid for FocusLock Pro. Phone ID: ") + dev));
+                  wa.setOnClickListener(v -> openWhatsApp(t("नमस्ते, मैंने Lagaam Pro के लिए पैसे भेजे हैं। फ़ोन ID: ",
+                          "Hi, I've paid for Lagaam Pro. Phone ID: ") + dev));
                   btns.addView(copy);
                   LinearLayout.LayoutParams wlp = new LinearLayout.LayoutParams(
                           LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -3397,19 +3588,115 @@ jobs:
                   content.addView(note);
               }
 
+              // ---------- 📷 v3.14: business QR + UPI ID ----------
+
+              private void renderQrCard() {
+                  LinearLayout c = card();
+                  c.setGravity(Gravity.CENTER_HORIZONTAL);
+                  c.addView(text(t("📷 QR से भेजें", "📷 Pay by QR"), 17, ui.text, true));
+                  c.addView(text(t("दूसरे फ़ोन से स्कैन करें, या गैलरी में सेव करके अपने UPI ऐप में \"गैलरी से स्कैन\" करें।",
+                          "Scan from another phone, or save it to your gallery and use \"scan from gallery\" in your UPI app."),
+                          13, ui.muted, false));
+                  ImageView qr = new ImageView(this);
+                  qr.setImageResource(R.drawable.upi_qr);
+                  qr.setAdjustViewBounds(true);
+                  qr.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                  LinearLayout.LayoutParams qlp = new LinearLayout.LayoutParams(dp(260), LinearLayout.LayoutParams.WRAP_CONTENT);
+                  qlp.setMargins(0, dp(10), 0, dp(6));
+                  c.addView(qr, qlp);
+                  final String id = Pro.QR_PA;
+                  TextView idv = text("UPI ID: " + id, 15, ui.text, true);
+                  idv.setGravity(Gravity.CENTER);
+                  c.addView(idv);
+                  LinearLayout row = new LinearLayout(this);
+                  row.setOrientation(LinearLayout.HORIZONTAL);
+                  row.setGravity(Gravity.CENTER);
+                  row.setPadding(0, dp(10), 0, 0);
+                  TextView copy = pill(t("📋 ID कॉपी", "📋 Copy ID"), false);
+                  copy.setOnClickListener(v -> copyText(id));
+                  TextView save = pill(t("🖼️ गैलरी में सेव", "🖼️ Save to gallery"), true);
+                  save.setOnClickListener(v -> saveQr());
+                  row.addView(copy);
+                  LinearLayout.LayoutParams sl = new LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                  sl.setMargins(dp(8), 0, 0, 0);
+                  row.addView(save, sl);
+                  c.addView(row);
+                  c.addView(text(t("Note में अपना फ़ोन ID ज़रूर लिखें (नीचे दिया है)।", "Write your phone ID (below) in the note."),
+                          12, ui.muted, false));
+                  content.addView(c);
+              }
+
+              private void saveQr() {
+                  if (Build.VERSION.SDK_INT < 29) {
+                      toast(t("इस फ़ोन में screenshot लेकर सेव करें", "Take a screenshot to save it on this phone"));
+                      return;
+                  }
+                  try {
+                      android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.upi_qr);
+                      android.content.ContentValues cv = new android.content.ContentValues();
+                      cv.put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, "Lagaam-UPI-QR.png");
+                      cv.put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png");
+                      cv.put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, "Pictures/Lagaam");
+                      Uri uri = getContentResolver().insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, cv);
+                      if (uri == null) throw new Exception();
+                      try (java.io.OutputStream os = getContentResolver().openOutputStream(uri)) {
+                          bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, os);
+                      }
+                      toast(t("✅ गैलरी में सेव हो गया (Pictures/Lagaam)", "✅ Saved to gallery (Pictures/Lagaam)"));
+                  } catch (Exception e) {
+                      toast(t("सेव नहीं हुआ, screenshot ले लें", "Couldn't save, take a screenshot"));
+                  }
+              }
+
+              /** v3.13: UPI ऐप से, या ID कॉपी करके खुद भेजना (हर UPI ऐप में चलता है). */
+              private void choosePay(int rs, String plan, String dev) {
+                  new AlertDialog.Builder(this)
+                          .setTitle(plan + " · ₹" + rs)
+                          .setMessage(t("कैसे भेजना है?\n\nअगर UPI ऐप में payment रुक जाए, तो दूसरा तरीका चुनें। वह हर UPI ऐप में चलता है।",
+                                  "How do you want to pay?\n\nIf the UPI app blocks the payment, pick the second way. It works in every UPI app."))
+                          .setPositiveButton(t("UPI ऐप खोलें", "Open UPI app"), (d, w) -> payUpi(rs, plan, dev))
+                          .setNegativeButton(t("ID कॉपी करके खुद भेजें", "Copy ID and pay myself"), (d, w) -> payManual(rs, dev))
+                          .show();
+              }
+
+              private void payManual(int rs, String dev) {
+                  copyText(Pro.QR_PA);
+                  new AlertDialog.Builder(this)
+                          .setTitle(t("✅ UPI ID कॉपी हो गई", "✅ UPI ID copied"))
+                          .setMessage(t("1. अपना UPI ऐप (GPay / PhonePe / Paytm) खोलें\n"
+                                          + "2. \"UPI ID से भेजें\" चुनें और कॉपी की हुई ID paste करें:\n    " + Pro.QR_PA + "\n"
+                                          + "3. रकम: ₹" + rs + "\n"
+                                          + "4. Note / message में लिखें: " + dev + "\n"
+                                          + "5. Screenshot WhatsApp पर भेजें, code मिल जाएगा।",
+                                  "1. Open your UPI app (GPay / PhonePe / Paytm)\n"
+                                          + "2. Choose \"Pay to UPI ID\" and paste the copied ID:\n    " + Pro.QR_PA + "\n"
+                                          + "3. Amount: ₹" + rs + "\n"
+                                          + "4. In the note / message write: " + dev + "\n"
+                                          + "5. Send the screenshot on WhatsApp to get your code."))
+                          .setPositiveButton(t("💬 WhatsApp खोलें", "💬 Open WhatsApp"), (d, w) -> openWhatsApp(
+                                  t("नमस्ते, मैंने Lagaam Pro के लिए ₹" + rs + " भेजे हैं। फ़ोन ID: ",
+                                          "Hi, I've paid ₹" + rs + " for Lagaam Pro. Phone ID: ") + dev))
+                          .setNegativeButton(t("ठीक है", "OK"), null)
+                          .show();
+              }
+
               private void payUpi(int rs, String plan, String dev) {
                   try {
-                      Uri u = new Uri.Builder().scheme("upi").authority("pay")
-                              .appendQueryParameter("pa", Pro.UPI_ID)
-                              .appendQueryParameter("pn", Pro.UPI_NAME)
+                      // v3.14: business (merchant) ID par bhejo, merchant code ke saath
+                      Uri.Builder ub = new Uri.Builder().scheme("upi").authority("pay")
+                              .appendQueryParameter("pa", Pro.QR_PA)
+                              .appendQueryParameter("pn", Pro.QR_PN)
+                              .appendQueryParameter("mc", Pro.QR_MC);
+                      Uri u = ub
                               .appendQueryParameter("am", rs + ".00")
                               .appendQueryParameter("cu", "INR")
-                              .appendQueryParameter("tn", "FocusLock Pro " + dev)
+                              .appendQueryParameter("tn", "Lagaam Pro " + dev)
                               .build();
                       startActivity(Intent.createChooser(new Intent(Intent.ACTION_VIEW, u), t("UPI ऐप चुनें", "Choose UPI app")));
                   } catch (Exception e) {
-                      copyText(Pro.UPI_ID);
-                      toast(t("UPI ऐप नहीं मिला। UPI ID कॉपी हो गई: ", "No UPI app found. UPI ID copied: ") + Pro.UPI_ID);
+                      copyText(Pro.QR_PA);
+                      toast(t("UPI ऐप नहीं मिला। UPI ID कॉपी हो गई: ", "No UPI app found. UPI ID copied: ") + Pro.QR_PA);
                   }
               }
 
@@ -3424,7 +3711,7 @@ jobs:
 
               private void copyText(String s) {
                   android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-                  cm.setPrimaryClip(android.content.ClipData.newPlainText("FocusLock", s));
+                  cm.setPrimaryClip(android.content.ClipData.newPlainText("Lagaam", s));
                   toast(t("📋 कॉपी हो गया", "📋 Copied"));
               }
 
@@ -3438,7 +3725,7 @@ jobs:
                   final EditText et = new EditText(this);
                   et.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
                   new AlertDialog.Builder(this)
-                          .setTitle("🛠️ Admin")
+                          .setTitle("Admin")
                           .setView(padded(et))
                           .setPositiveButton("OK", (d, w) -> {
                               if (Pro.checkAdmin(et.getText().toString())) {
@@ -3500,7 +3787,7 @@ jobs:
                       if (out.getText().length() == 0) return;
                       Intent i = new Intent(Intent.ACTION_SEND);
                       i.setType("text/plain");
-                      i.putExtra(Intent.EXTRA_TEXT, t("आपका फ़ोकस लॉक Pro code: ", "Your FocusLock Pro code: ") + out.getText()
+                      i.putExtra(Intent.EXTRA_TEXT, t("आपका Lagaam Pro code: ", "Your Lagaam Pro code: ") + out.getText()
                               + t("\nऐप में ⭐ → 3️⃣ में डालें।", "\nEnter it in the app under ⭐ → 3️⃣."));
                       startActivity(Intent.createChooser(i, t("भेजें", "Send")));
                   });
@@ -3512,7 +3799,7 @@ jobs:
               // ================= design helpers =================
 
               private void showBottom(String label, Runnable action) {
-                  bottomButton.setText(label);
+                  bottomButton.setText(L.clean(label));
                   bottomAction = action;
                   if (bottomButton.getVisibility() != View.VISIBLE) {
                       bottomButton.setVisibility(View.VISIBLE);
@@ -3536,7 +3823,7 @@ jobs:
               }
 
               private void toast(String s) {
-                  Toast.makeText(this, s, Toast.LENGTH_SHORT).show();
+                  Toast.makeText(this, L.clean(s), Toast.LENGTH_SHORT).show();
               }
 
               private int dp(int v) {
@@ -3611,7 +3898,7 @@ jobs:
 
               private TextView text(String s, int sp, int color, boolean bold) {
                   TextView t = new TextView(this);
-                  t.setText(s);
+                  t.setText(L.clean(s));
                   t.setTextSize(sp);
                   t.setTextColor(color);
                   // v3.12: bade bold = Baloo 2, chhote bold = Mukta SemiBold, baaki Mukta
@@ -3914,7 +4201,7 @@ jobs:
                   root.addView(title);
 
                   TextView q = new TextView(this);
-                  q.setText(L.t(this, "रुकिए 🌿 क्या सच में अभी ज़रूरी है?", "Pause 🌿 Do you really need it now?"));
+                  q.setText(L.t(this, "रुकिए। क्या सच में अभी ज़रूरी है?", "Pause. Do you really need it now?"));
                   q.setTextColor(ui.deepText);
                   q.setTextSize(16);
                   q.setGravity(Gravity.CENTER);
@@ -4181,9 +4468,14 @@ jobs:
 
               // ---- bhugtan ki jaankari (Rakesh ki) ----
               public static final String UPI_ID = "__UPI_ID__";
-              public static final String UPI_NAME = "FocusLock";
+              public static final String UPI_NAME = "Lagaam";
               /** 91 ke saath, bina + ke */
               public static final String WHATSAPP = "__WHATSAPP__";
+
+              /** v3.14: Rakesh ka business QR (CSC STORE). QR image res/drawable-nodpi/upi_qr.png me hai. */
+              public static final String QR_PA = "9617093276@okbizaxis";
+              public static final String QR_PN = "CSC STORE";
+              public static final String QR_MC = "4816";
 
               // ---- daam ----
               public static final int[][] PLANS = {
@@ -4886,6 +5178,9 @@ jobs:
                   if (now - lastCheck < 300 && event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
                   lastCheck = now;
 
+                  // v3.16: Lagaam ka apna update install ho raha hai — installer screen mat roko
+                  if (Updater.installing(this) && pkg.contains("packageinstaller")) return;
+
                   try {
                       String urlBar = urlBarId(pkg);
                       if (urlBar != null) {
@@ -5048,7 +5343,7 @@ jobs:
                   String name = getString(R.string.app_name);
                   List<AccessibilityNodeInfo> a = root.findAccessibilityNodeInfosByText(name);
                   if (a != null && !a.isEmpty()) return true;
-                  List<AccessibilityNodeInfo> b = root.findAccessibilityNodeInfosByText("FocusLock");
+                  List<AccessibilityNodeInfo> b = root.findAccessibilityNodeInfosByText("Lagaam");
                   return b != null && !b.isEmpty();
               }
 
@@ -5424,7 +5719,7 @@ jobs:
               }
 
               public static String lang(Context c) {
-                  return p(c).getString("lang", "hi");
+                  return p(c).getString("lang", "en");   // v3.15: default English
               }
 
               public static void setLang(Context c, String l) {
@@ -5876,6 +6171,458 @@ jobs:
           }
           ENDOFFILE
           mkdir -p FocusLock/app/src/main/java/com/rakesh/focuslock
+          cat > FocusLock/app/src/main/java/com/rakesh/focuslock/UpdateJob.java <<'ENDOFFILE'
+          package com.rakesh.focuslock;
+
+          import android.app.job.JobParameters;
+          import android.app.job.JobService;
+
+          /** v3.16: har ~6 ghante GitHub par naya version dekhna (internet hone par). */
+          public class UpdateJob extends JobService {
+              @Override
+              public boolean onStartJob(JobParameters params) {
+                  new Thread(() -> {
+                      try {
+                          Updater.backgroundRun(getApplicationContext());
+                      } catch (Exception ignored) {
+                      }
+                      jobFinished(params, false);
+                  }).start();
+                  return true;
+              }
+
+              @Override
+              public boolean onStopJob(JobParameters params) {
+                  return true;
+              }
+          }
+          ENDOFFILE
+          mkdir -p FocusLock/app/src/main/java/com/rakesh/focuslock
+          cat > FocusLock/app/src/main/java/com/rakesh/focuslock/UpdateReceiver.java <<'ENDOFFILE'
+          package com.rakesh.focuslock;
+
+          import android.app.PendingIntent;
+          import android.content.BroadcastReceiver;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.content.pm.PackageInstaller;
+
+          /** v3.16: PackageInstaller ka jawaab — pakka karne wali screen dikhao ya galti batao. */
+          public class UpdateReceiver extends BroadcastReceiver {
+              /** MainActivity samne khula hai? */
+              static volatile boolean appVisible;
+
+              @Override
+              public void onReceive(Context c, Intent intent) {
+                  int st = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -999);
+                  if (st == PackageInstaller.STATUS_PENDING_USER_ACTION) {
+                      Intent confirm = intent.getParcelableExtra(Intent.EXTRA_INTENT);
+                      if (confirm == null) return;
+                      confirm.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                      boolean shown = false;
+                      if (appVisible) {
+                          try {
+                              c.startActivity(confirm);
+                              shown = true;
+                          } catch (Exception ignored) {
+                          }
+                      }
+                      if (!shown) {
+                          PendingIntent tap = PendingIntent.getActivity(c, 1, confirm,
+                                  PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+                          Updater.notify(c, L.t(c, "Lagaam का अपडेट तैयार है", "Lagaam update is ready"),
+                                  L.t(c, "Install करने के लिए यहाँ दबाएँ", "Tap here to install"), tap);
+                      }
+                  } else if (st != PackageInstaller.STATUS_SUCCESS) {
+                      String m = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
+                      if (st == PackageInstaller.STATUS_FAILURE_ABORTED) return;   // user ne khud mana kiya
+                      Updater.notify(c, L.t(c, "Lagaam अपडेट नहीं हो सका", "Lagaam update failed"),
+                              L.t(c, "बाद में फिर कोशिश होगी. ", "Will try again later. ") + (m == null ? "" : m),
+                              Updater.launch(c));
+                  }
+              }
+          }
+          ENDOFFILE
+          mkdir -p FocusLock/app/src/main/java/com/rakesh/focuslock
+          cat > FocusLock/app/src/main/java/com/rakesh/focuslock/Updater.java <<'ENDOFFILE'
+          package com.rakesh.focuslock;
+
+          import android.app.Notification;
+          import android.app.NotificationChannel;
+          import android.app.NotificationManager;
+          import android.app.PendingIntent;
+          import android.app.job.JobInfo;
+          import android.app.job.JobScheduler;
+          import android.content.ComponentName;
+          import android.content.Context;
+          import android.content.Intent;
+          import android.content.SharedPreferences;
+          import android.content.pm.PackageInfo;
+          import android.content.pm.PackageInstaller;
+          import android.os.Build;
+          import android.os.Handler;
+          import android.os.Looper;
+
+          import org.json.JSONArray;
+          import org.json.JSONObject;
+
+          import java.io.ByteArrayOutputStream;
+          import java.io.File;
+          import java.io.FileInputStream;
+          import java.io.FileOutputStream;
+          import java.io.InputStream;
+          import java.io.OutputStream;
+          import java.net.HttpURLConnection;
+          import java.net.URL;
+
+          /**
+           * v3.16: Apne-aap update.
+           * GitHub ki latest release dekhta hai → naya version mile to APK download karke
+           * PackageInstaller se install karta hai. Kya naya hai, release ke notes se dikhata hai.
+           */
+          public final class Updater {
+              private Updater() {}
+
+              static final String REPO = "rakeshkirad131/focuslock";
+              static final String API = "https://api.github.com/repos/" + REPO + "/releases/latest";
+              static final String CH = "updates";
+              static final int JOB_ID = 7716;
+              static final int NOTIF_ID = 41;
+              static final long CHECK_EVERY = 3L * 60 * 60 * 1000;   // khule ऐप me har 3 ghante
+
+              /** Naye version ki jaankari */
+              public static final class Info {
+                  public String version;     // "3.16"
+                  public String apkUrl;
+                  public long size;
+                  public String notesEn = "";
+                  public String notesHi = "";
+
+                  public String notes(Context c) {
+                      String n = L.en(c) ? notesEn : notesHi;
+                      if (n == null || n.isEmpty()) n = notesEn.isEmpty() ? notesHi : notesEn;
+                      return n;
+                  }
+              }
+
+              public interface Progress {
+                  void onProgress(int percent);
+
+                  void onDone(boolean ok, String msg);
+              }
+
+              static SharedPreferences p(Context c) {
+                  return c.getSharedPreferences("update", Context.MODE_PRIVATE);
+              }
+
+              // ---------- version ----------
+
+              public static String currentVersion(Context c) {
+                  try {
+                      return c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName;
+                  } catch (Exception e) {
+                      return "0";
+                  }
+              }
+
+              static long code(PackageInfo pi) {
+                  return Build.VERSION.SDK_INT >= 28 ? pi.getLongVersionCode() : pi.versionCode;
+              }
+
+              /** "3.16" > "3.15" → 1 */
+              public static int compare(String a, String b) {
+                  String[] x = a.split("\\."), y = b.split("\\.");
+                  for (int i = 0; i < Math.max(x.length, y.length); i++) {
+                      int u = i < x.length ? num(x[i]) : 0, v = i < y.length ? num(y[i]) : 0;
+                      if (u != v) return u > v ? 1 : -1;
+                  }
+                  return 0;
+              }
+
+              private static int num(String s) {
+                  try {
+                      return Integer.parseInt(s.replaceAll("[^0-9]", ""));
+                  } catch (Exception e) {
+                      return 0;
+                  }
+              }
+
+              public static boolean isNewer(Context c, Info i) {
+                  return i != null && i.version != null && i.apkUrl != null
+                          && compare(i.version, currentVersion(c)) > 0;
+              }
+
+              // ---------- GitHub se jaankari ----------
+
+              /** Network call — background thread par hi chalayen. Na mile to null. */
+              public static Info fetch(Context c) {
+                  HttpURLConnection con = null;
+                  try {
+                      con = (HttpURLConnection) new URL(API).openConnection();
+                      con.setConnectTimeout(15000);
+                      con.setReadTimeout(20000);
+                      con.setRequestProperty("Accept", "application/vnd.github+json");
+                      con.setRequestProperty("User-Agent", "Lagaam-Android");
+                      if (con.getResponseCode() != 200) return null;
+                      String body = read(con.getInputStream());
+                      JSONObject o = new JSONObject(body);
+                      Info i = new Info();
+                      String tag = o.optString("tag_name", "");         // v3.16-build14
+                      if (tag.startsWith("v")) tag = tag.substring(1);
+                      int dash = tag.indexOf('-');
+                      i.version = dash > 0 ? tag.substring(0, dash) : tag;
+                      String want = Edition.lite(c) ? "FocusLock-Lite.apk" : "FocusLock.apk";
+                      JSONArray as = o.optJSONArray("assets");
+                      if (as != null) {
+                          for (int k = 0; k < as.length(); k++) {
+                              JSONObject a = as.getJSONObject(k);
+                              if (want.equals(a.optString("name"))) {
+                                  i.apkUrl = a.optString("browser_download_url", null);
+                                  i.size = a.optLong("size", 0);
+                              }
+                          }
+                      }
+                      parseNotes(o.optString("body", ""), i);
+                      p(c).edit().putLong("lastCheck", System.currentTimeMillis()).apply();
+                      return i;
+                  } catch (Exception e) {
+                      return null;
+                  } finally {
+                      if (con != null) con.disconnect();
+                  }
+              }
+
+              /** Release notes: [en] ... [hi] ... wale hisse alag karo, "- " ko "• " banao. */
+              static void parseNotes(String body, Info i) {
+                  StringBuilder en = new StringBuilder(), hi = new StringBuilder();
+                  StringBuilder cur = en;
+                  for (String raw : body.replace("\r", "").split("\n")) {
+                      String line = raw.trim();
+                      if (line.equalsIgnoreCase("[en]")) {
+                          cur = en;
+                          continue;
+                      }
+                      if (line.equalsIgnoreCase("[hi]")) {
+                          cur = hi;
+                          continue;
+                      }
+                      if (line.isEmpty() || line.startsWith("#")) continue;
+                      if (line.startsWith("- ") || line.startsWith("* ")) line = "• " + line.substring(2).trim();
+                      if (cur.length() > 0) cur.append('\n');
+                      cur.append(line);
+                  }
+                  i.notesEn = en.toString();
+                  i.notesHi = hi.toString();
+              }
+
+              public static boolean dueForCheck(Context c) {
+                  return System.currentTimeMillis() - p(c).getLong("lastCheck", 0) > CHECK_EVERY;
+              }
+
+              // ---------- install ki anumati ----------
+
+              public static boolean canInstall(Context c) {
+                  return Build.VERSION.SDK_INT < 26 || c.getPackageManager().canRequestPackageInstalls();
+              }
+
+              /** Lock ke dauraan bhi hamara apna update-screen na roka jaaye (ShortsService dekhta hai). */
+              public static boolean installing(Context c) {
+                  return System.currentTimeMillis() < p(c).getLong("installUntil", 0);
+              }
+
+              // ---------- download + install ----------
+
+              /** Background thread par chalayen. Progress callbacks usi thread par aate hain. */
+              public static void downloadAndInstall(Context c, Info info, Progress cb) {
+                  Context app = c.getApplicationContext();
+                  File f = new File(app.getCacheDir(), "lagaam-update.apk");
+                  try {
+                      HttpURLConnection con = (HttpURLConnection) new URL(info.apkUrl).openConnection();
+                      con.setInstanceFollowRedirects(true);
+                      con.setConnectTimeout(15000);
+                      con.setReadTimeout(30000);
+                      con.setRequestProperty("User-Agent", "Lagaam-Android");
+                      int rc = con.getResponseCode();
+                      if (rc != 200) {
+                          cb.onDone(false, "HTTP " + rc);
+                          return;
+                      }
+                      long total = con.getContentLengthLong();
+                      if (total <= 0) total = info.size;
+                      try (InputStream in = con.getInputStream(); OutputStream out = new FileOutputStream(f)) {
+                          byte[] buf = new byte[64 * 1024];
+                          long got = 0;
+                          int n, last = -1;
+                          while ((n = in.read(buf)) > 0) {
+                              out.write(buf, 0, n);
+                              got += n;
+                              if (total > 0) {
+                                  int pc = (int) (got * 100 / total);
+                                  if (pc != last) {
+                                      last = pc;
+                                      cb.onProgress(pc);
+                                  }
+                              }
+                          }
+                      } finally {
+                          con.disconnect();
+                      }
+
+                      // Pakka karo: yahi ऐप hai aur version naya hai
+                      PackageInfo nw = app.getPackageManager().getPackageArchiveInfo(f.getPath(), 0);
+                      PackageInfo old = app.getPackageManager().getPackageInfo(app.getPackageName(), 0);
+                      if (nw == null || !app.getPackageName().equals(nw.packageName) || code(nw) <= code(old)) {
+                          f.delete();
+                          cb.onDone(false, L.t(app, "डाउनलोड की गई फ़ाइल सही नहीं है", "Downloaded file is not valid"));
+                          return;
+                      }
+
+                      // "Kya naya hai" — update ke baad dikhane ke liye rakh lo
+                      p(app).edit()
+                              .putString("pendingVer", info.version)
+                              .putString("notesEn", info.notesEn)
+                              .putString("notesHi", info.notesHi)
+                              .putBoolean("notesShown", false)
+                              .putLong("installUntil", System.currentTimeMillis() + 5 * 60 * 1000)
+                              .apply();
+
+                      install(app, f);
+                      cb.onDone(true, null);
+                  } catch (Exception e) {
+                      f.delete();
+                      cb.onDone(false, e.getClass().getSimpleName());
+                  }
+              }
+
+              static void install(Context c, File f) throws Exception {
+                  PackageInstaller pi = c.getPackageManager().getPackageInstaller();
+                  PackageInstaller.SessionParams sp =
+                          new PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL);
+                  sp.setAppPackageName(c.getPackageName());
+                  sp.setSize(f.length());
+                  if (Build.VERSION.SDK_INT >= 31) {
+                      // Android 12+: agar pichhla install isi ऐप ne kiya tha to bina "Install" dabaaye ho jaata hai
+                      sp.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED);
+                  }
+                  int id = pi.createSession(sp);
+                  try (PackageInstaller.Session s = pi.openSession(id)) {
+                      try (InputStream in = new FileInputStream(f);
+                           OutputStream out = s.openWrite("lagaam.apk", 0, f.length())) {
+                          byte[] buf = new byte[64 * 1024];
+                          int n;
+                          while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                          s.fsync(out);
+                      }
+                      Intent i = new Intent(c, UpdateReceiver.class).setPackage(c.getPackageName());
+                      int fl = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_MUTABLE : 0);
+                      PendingIntent pend = PendingIntent.getBroadcast(c, id, i, fl);
+                      s.commit(pend.getIntentSender());
+                  }
+              }
+
+              // ---------- update ke baad "kya naya hai" ----------
+
+              /** Abhi chal raha version wahi hai jiske notes rakhe the? to notes lautao (ek hi baar). */
+              public static String freshNotes(Context c) {
+                  SharedPreferences sp = p(c);
+                  String v = sp.getString("pendingVer", null);
+                  if (v == null || sp.getBoolean("notesShown", true)) return null;
+                  if (compare(currentVersion(c), v) < 0) return null;   // abhi install nahi hua
+                  String n = L.en(c) ? sp.getString("notesEn", "") : sp.getString("notesHi", "");
+                  if (n == null || n.isEmpty()) n = sp.getString("notesEn", "");
+                  return n == null ? "" : n;
+              }
+
+              public static void markNotesShown(Context c) {
+                  p(c).edit().putBoolean("notesShown", true).remove("installUntil").apply();
+              }
+
+              /** MY_PACKAGE_REPLACED par: notification "Lagaam update ho gaya" + kya naya hai. */
+              public static void onUpdated(Context c) {
+                  new File(c.getCacheDir(), "lagaam-update.apk").delete();
+                  String n = freshNotes(c);
+                  if (n == null) return;
+                  String title = L.t(c, "Lagaam v" + currentVersion(c) + " में अपडेट हो गया",
+                          "Lagaam updated to v" + currentVersion(c));
+                  notify(c, title, n.isEmpty() ? L.t(c, "नया वर्शन तैयार है", "The new version is ready") : n,
+                          launch(c));
+              }
+
+              // ---------- notification ----------
+
+              static PendingIntent launch(Context c) {
+                  Intent i = new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                  return PendingIntent.getActivity(c, 0, i, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+              }
+
+              static void notify(Context c, String title, String text, PendingIntent tap) {
+                  NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
+                  if (nm == null) return;
+                  if (Build.VERSION.SDK_INT >= 26 && nm.getNotificationChannel(CH) == null) {
+                      nm.createNotificationChannel(new NotificationChannel(CH,
+                              L.t(c, "ऐप अपडेट", "App updates"), NotificationManager.IMPORTANCE_DEFAULT));
+                  }
+                  Notification.Builder b = Build.VERSION.SDK_INT >= 26
+                          ? new Notification.Builder(c, CH) : new Notification.Builder(c);
+                  b.setSmallIcon(R.drawable.ic_lock_white)
+                          .setContentTitle(L.clean(title))
+                          .setContentText(L.clean(text))
+                          .setStyle(new Notification.BigTextStyle().bigText(L.clean(text)))
+                          .setAutoCancel(true);
+                  if (tap != null) b.setContentIntent(tap);
+                  try {
+                      nm.notify(NOTIF_ID, b.build());
+                  } catch (Exception ignored) {
+                  }
+              }
+
+              // ---------- background jaanch (har 6 ghante) ----------
+
+              public static void schedule(Context c) {
+                  try {
+                      JobScheduler js = (JobScheduler) c.getSystemService(Context.JOB_SCHEDULER_SERVICE);
+                      if (js == null || js.getPendingJob(JOB_ID) != null) return;
+                      js.schedule(new JobInfo.Builder(JOB_ID, new ComponentName(c, UpdateJob.class))
+                              .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                              .setPeriodic(6L * 60 * 60 * 1000)
+                              .setPersisted(true)
+                              .build());
+                  } catch (Exception ignored) {
+                  }
+              }
+
+              /** Background me: naya version mile to khud download + install; anumati na ho to notification. */
+              static void backgroundRun(Context c) {
+                  Info i = fetch(c);
+                  if (!isNewer(c, i)) return;
+                  String ver = "v" + i.version;
+                  if (!canInstall(c)) {
+                      notify(c, L.t(c, "Lagaam " + ver + " आ गया है", "Lagaam " + ver + " is available"),
+                              L.t(c, "अपडेट के लिए Lagaam खोलें.\n", "Open Lagaam to update.\n") + i.notes(c), launch(c));
+                      return;
+                  }
+                  downloadAndInstall(c, i, new Progress() {
+                      public void onProgress(int percent) {}
+
+                      public void onDone(boolean ok, String msg) {}
+                  });
+              }
+
+              static String read(InputStream in) throws Exception {
+                  ByteArrayOutputStream bo = new ByteArrayOutputStream();
+                  byte[] b = new byte[8192];
+                  int n;
+                  while ((n = in.read(b)) > 0) bo.write(b, 0, n);
+                  in.close();
+                  return bo.toString("UTF-8");
+              }
+
+              static void main(Runnable r) {
+                  new Handler(Looper.getMainLooper()).post(r);
+              }
+          }
+          ENDOFFILE
+          mkdir -p FocusLock/app/src/main/java/com/rakesh/focuslock
           cat > FocusLock/app/src/main/java/com/rakesh/focuslock/Usage.java <<'ENDOFFILE'
           package com.rakesh.focuslock;
 
@@ -5967,6 +6714,401 @@ jobs:
               }
           }
           ENDOFFILE
+          mkdir -p FocusLock/app/src/main/res/drawable-nodpi
+          base64 -d > FocusLock/app/src/main/res/drawable-nodpi/upi_qr.png <<'ENDOFFILE'
+          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
+          ENDOFFILE
           mkdir -p FocusLock/app/src/main/res/drawable
           cat > FocusLock/app/src/main/res/drawable/ic_launcher_bg.xml <<'ENDOFFILE'
           <?xml version="1.0" encoding="utf-8"?>
@@ -6029,7 +7171,7 @@ jobs:
                   android:id="@+id/w_title"
                   android:layout_width="match_parent"
                   android:layout_height="wrap_content"
-                  android:text="🔒 फ़ोकस लॉक"
+                  android:text="Lagaam"
                   android:textColor="#8FA8A6"
                   android:textSize="12sp" />
 
@@ -6039,7 +7181,7 @@ jobs:
                   android:layout_height="wrap_content"
                   android:layout_marginTop="2dp"
                   android:maxLines="2"
-                  android:text="आज फ़ोकस: 0 मिनट"
+                  android:text="Focus today: 0 min"
                   android:textColor="#E8F1EF"
                   android:textSize="16sp"
                   android:textStyle="bold" />
@@ -6051,7 +7193,7 @@ jobs:
                   android:layout_marginTop="8dp"
                   android:background="@drawable/widget_btn"
                   android:gravity="center"
-                  android:text="🍅 25 मिनट फ़ोकस"
+                  android:text="25 min focus"
                   android:textColor="#2A1A05"
                   android:textSize="14sp"
                   android:textStyle="bold" />
@@ -6069,11 +7211,11 @@ jobs:
           cat > FocusLock/app/src/main/res/values/strings.xml <<'ENDOFFILE'
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
-              <string name="app_name">फ़ोकस लॉक</string>
-              <string name="a11y_name">फ़ोकस लॉक – Shorts/Reels ब्लॉक</string>
-              <string name="a11y_desc">यह सेवा YouTube Shorts, Instagram Reels और Facebook Reels खुलते ही उन्हें बंद करती है। सख़्त मोड चालू हो तो लॉक के दौरान इस ऐप को हटाने या रोकने वाली सेटिंग नहीं खुलने देती। यह सिर्फ़ स्क्रीन के हिस्सों की पहचान (ID) देखती है, कोई जानकारी सेव या कहीं नहीं भेजती।</string>
-              <string name="notif_name">फ़ोकस लॉक – सूचना रोक</string>
-              <string name="widget_name">फ़ोकस लॉक</string>
+              <string name="app_name">Lagaam</string>
+              <string name="a11y_name">Lagaam – Shorts/Reels block</string>
+              <string name="a11y_desc">Lagaam uses this service to close YouTube Shorts, Instagram Reels and Facebook Reels as soon as they open, and to block websites of locked apps. In strict mode it stops the settings that would remove or stop this app during a lock. It only reads screen element IDs and never saves or sends any data.</string>
+              <string name="notif_name">Lagaam – Notification hold</string>
+              <string name="widget_name">Lagaam</string>
           </resources>
           ENDOFFILE
           mkdir -p FocusLock/app/src/main/res/xml
@@ -6246,6 +7388,8 @@ jobs:
         with:
           tag_name: v${{ env.VER }}-build${{ github.run_number }}
           name: FocusLock v${{ env.VER }} (build ${{ github.run_number }})
+          body_path: FocusLock/RELEASE_NOTES.md
+          make_latest: true
           files: |
             FocusLock-v${{ env.VER }}.apk
             FocusLock-Lite-v${{ env.VER }}.apk
