@@ -1,4 +1,4 @@
-name: Build Lagaam APK
+name: Build Palrakh APK
 
 on:
   push:
@@ -19,13 +19,11 @@ jobs:
           mkdir -p FocusLock
           cat > FocusLock/RELEASE_NOTES.md <<'ENDOFFILE'
           [en]
-          - Automatic updates: Lagaam now finds new versions by itself and updates the app
-          - Before each update you see what is new, and after the update a short summary
-          - Your lock, limits and settings stay safe during the update
+          - Update notes now show in your chosen language
+          - After paying, the confirmation page shows in your language
           [hi]
-          - अपने-आप अपडेट: नया वर्शन आते ही Lagaam खुद ढूँढकर ऐप अपडेट करेगा
-          - हर अपडेट से पहले दिखेगा कि क्या नया है, और अपडेट के बाद छोटा सा सार
-          - अपडेट के दौरान आपका लॉक, सीमा और सेटिंग सुरक्षित रहेंगे
+          - अपडेट की जानकारी अब आपकी चुनी हुई भाषा में दिखती है
+          - Payment के बाद वाला पेज भी आपकी भाषा में दिखता है
           ENDOFFILE
           mkdir -p FocusLock/app
           cat > FocusLock/app/build.gradle <<'ENDOFFILE'
@@ -41,8 +39,8 @@ jobs:
                   applicationId "com.rakesh.focuslock"
                   minSdk 26
                   targetSdk 34
-                  versionCode 20
-                  versionName "3.16"
+                  versionCode 24
+                  versionName "3.20"
               }
 
               // v3.7: do roop. Lite me Accessibility/Notification service nahi (Play Protect chalu rehte install).
@@ -141,6 +139,13 @@ jobs:
                           <action android:name="android.intent.action.MAIN" />
                           <category android:name="android.intent.category.LAUNCHER" />
                       </intent-filter>
+                      <!-- v3.17: payment ke baad browser se wapas: palrakh://pro?code=... -->
+                      <intent-filter>
+                          <action android:name="android.intent.action.VIEW" />
+                          <category android:name="android.intent.category.DEFAULT" />
+                          <category android:name="android.intent.category.BROWSABLE" />
+                          <data android:scheme="palrakh" android:host="pro" />
+                      </intent-filter>
                   </activity>
 
                   <activity
@@ -236,6 +241,1461 @@ jobs:
               </application>
           </manifest>
           ENDOFFILE
+          mkdir -p FocusLock/app/src/main/assets/i18n
+          cat > FocusLock/app/src/main/assets/i18n/ar.tsv <<'ENDOFFILE'
+          \nEnter it in the app under ⭐ → 3️⃣.	\nأدخله في التطبيق من قائمة Pro.
+          \nOpen the apps to see them.	\nافتح التطبيقات لرؤيتها.
+          \nOpens again tomorrow	\nيفتح مجددًا غدًا
+          \nYou can edit it after it ends.	\nيمكنك تعديله بعد انتهائه.
+           (today)	 (اليوم)
+           (until 	 (حتى 
+           + less phone 	 + استخدام أقل للهاتف 
+           + streak 	 + سلسلة 
+           apps locked	 تطبيقات مقفلة
+           apps will be locked for 	 تطبيقات ستُقفل لمدة 
+           apps: 	 التطبيقات: 
+           days	 يوم
+           days)	 يوم)
+           days.	 يوم.
+           days. Thank you!	 يوم. شكرًا لك!
+           for Palrakh Pro. Phone ID: 	 مقابل Palrakh Pro. معرّف الهاتف: 
+           is available	 متوفر
+           is blocked	 محظور
+           is locked now	 مقفل الآن
+           is locked too (the app is locked)	 مقفل أيضًا (التطبيق مقفل)
+           is on	 مفعّل
+           is running now	 يعمل الآن
+           left	 متبقية
+           left). Don't turn this off now.	 متبقية). لا توقفه الآن.
+           min)	 دقيقة)
+           notifications held during the lock	 إشعارات محجوزة أثناء القفل
+           of focus done. All apps are open again.	 من التركيز اكتملت. جميع التطبيقات مفتوحة مجددًا.
+           of your 	 من 
+           on  	 مفعّل  
+           on WhatsApp to get your code.	 عبر واتساب لتحصل على رمزك.
+           on the Razorpay page and send phone ID 	 في صفحة Razorpay وأرسل معرّف الهاتف 
+           on until 	 مفعّل حتى 
+           points today	 نقطة اليوم
+           profile	 ملف
+           pts	 نقطة
+           times	 مرات
+           times after pausing · opened 	 مرات بعد التوقف · فُتح 
+           times 👏	 مرات
+           · Locked: 	 · المقفلة: 
+           · best 	 · الأفضل 
+           · until 	 · حتى 
+           – how long per day?	 – كم من الوقت يوميًا؟
+          "Just 5 minutes" becomes an hour. Stop here.	"خمس دقائق فقط" تصبح ساعة. توقف هنا.
+          ).\n\nThis lock cannot be opened early, 	).\n\nلا يمكن فتح هذا القفل مبكرًا، 
+          + Add website	+ إضافة موقع
+          + Limit	+ حد
+          -day streak	أيام متتالية
+          1 month	شهر واحد
+          1 year	سنة واحدة
+          1. Open your UPI app (GPay / PhonePe / Paytm)\n	1. افتح تطبيق UPI لديك (GPay / PhonePe / Paytm)\n
+          1. Settings → Apps → Palrakh → Autostart ON\n2. Battery saver → No restrictions\n3. In Recent apps, pull Palrakh down and tap 🔒	1. الإعدادات ← التطبيقات ← Palrakh ← التشغيل التلقائي مفعّل\n2. توفير البطارية ← بلا قيود\n3. في التطبيقات الأخيرة، اسحب Palrakh للأسفل واضغط على القفل
+          1. Settings → Apps → Palrakh → Battery usage\n2. Turn on Allow background activity + Allow auto launch\n3. Lock the app 🔒 in Recent apps	1. الإعدادات ← التطبيقات ← Palrakh ← استخدام البطارية\n2. فعّل السماح بالنشاط في الخلفية + السماح بالتشغيل التلقائي\n3. اقفل التطبيق في التطبيقات الأخيرة
+          1. Settings → Apps → Palrakh → Battery → Unrestricted\n2. If there is an Autostart option, turn it on	1. الإعدادات ← التطبيقات ← Palrakh ← البطارية ← غير مقيّد\n2. إن وُجد خيار التشغيل التلقائي ففعّله
+          1. Settings → Battery → Background power consumption → Palrakh → Allow\n2. i Manager → App manager → Autostart → Palrakh ON\n3. Keep Ultra power saving off	1. الإعدادات ← البطارية ← استهلاك الطاقة في الخلفية ← Palrakh ← سماح\n2. i Manager ← مدير التطبيقات ← التشغيل التلقائي ← Palrakh مفعّل\n3. أبقِ وضع توفير الطاقة الفائق متوقفًا
+          1. Settings → Battery → Background usage limits → add Palrakh to Never sleeping apps\n2. App info → Battery → Unrestricted	1. الإعدادات ← البطارية ← حدود الاستخدام في الخلفية ← أضف Palrakh إلى التطبيقات التي لا تنام أبدًا\n2. معلومات التطبيق ← البطارية ← غير مقيّد
+          1. Usage access	1. الوصول إلى بيانات الاستخدام
+          10 hours of focus	10 ساعات من التركيز
+          2. Choose "Pay to UPI ID" and paste the copied ID:\n    	2. اختر "الدفع إلى معرّف UPI" والصق المعرّف المنسوخ:\n    
+          2. Display over other apps	2. الظهور فوق التطبيقات الأخرى
+          3 days	3 أيام
+          3 separate profiles: each with its own time, days and apps.	3 ملفات منفصلة: لكل منها وقته وأيامه وتطبيقاته.
+          3-day streak	3 أيام متتالية
+          3. Amount: ₹	3. المبلغ: ₹
+          30-day streak	30 يومًا متتاليًا
+          4. In the note / message write: 	4. اكتب في الملاحظة / الرسالة: 
+          5. Send the screenshot on WhatsApp to get your code.	5. أرسل لقطة الشاشة عبر واتساب لتحصل على رمزك.
+          50 hours of focus	50 ساعة من التركيز
+          7-day streak	7 أيام متتالية
+          : today's limit reached	: بلغ حد اليوم
+          A 100-point day	يوم بـ100 نقطة
+          A 300-point day	يوم بـ300 نقطة
+          A day under 2 hours	يوم بأقل من ساعتين
+          A little discomfort today, a big comfort tomorrow.	قليل من التعب اليوم، راحة كبيرة غدًا.
+          A promise to yourself is the biggest promise.	الوعد لنفسك هو أكبر وعد.
+          Add website	إضافة موقع
+          After "Open anyway", allow for	بعد "افتح على أي حال"، اسمح لمدة
+          All apps will open. It won't count toward the streak.	ستُفتح جميع التطبيقات. لن يُحتسب ذلك في السلسلة.
+          Allow	سماح
+          Allow first: tap here → "Palrakh – Notification hold" → ON	اسمح أولًا: اضغط هنا ← "Palrakh – Notification hold" ← تفعيل
+          Allow once: turn on "Allow" for Palrakh on the next screen, then come back.	اسمح مرة واحدة: فعّل "سماح" لتطبيق Palrakh في الشاشة التالية، ثم عُد.
+          Also keep 🛡️ "Uninstall protection" on (above).	أبقِ أيضًا "الحماية من الحذف" مفعّلة (في الأعلى).
+          Also turn on the block service	فعّل أيضًا خدمة الحظر
+          Android	Android
+          Answer	الإجابة
+          Any loosening (removing limits, turning off blocks) needs the PIN.	أي تخفيف (إزالة الحدود، إيقاف الحظر) يحتاج إلى رمز PIN.
+          App updates	تحديثات التطبيق
+          Appearance	المظهر
+          Apps for pause mode	تطبيقات وضع التوقف
+          Apps stay locked meanwhile. Cancel if it is not really urgent.	تبقى التطبيقات مقفلة في هذه الأثناء. ألغِ إن لم يكن الأمر عاجلًا حقًا.
+          Arise, awake, and stop not till the goal is reached.	انهض واستيقظ، ولا تتوقف حتى تبلغ الهدف.
+          Ask a trusted person to set it. Then loosening needs them.	اطلب من شخص تثق به أن يضبطه. عندها يحتاج التخفيف إليه.
+          Attention is your real power.	الانتباه هو قوتك الحقيقية.
+          Before "Open anyway", you must	قبل "افتح على أي حال"، يجب عليك
+          Bhagavad Gita 2.47	بهاغافاد غيتا 2.47
+          Bhagavad Gita 6.5	بهاغافاد غيتا 6.5
+          Bhagavad Gita 6.6 (meaning)	بهاغافاد غيتا 6.6 (المعنى)
+          Block	الحظر
+          Boredom isn't bad. New ideas grow in it.	الملل ليس سيئًا. فيه تنمو الأفكار الجديدة.
+          Breathe in…	شهيق…
+          Breathe out…	زفير…
+          Can't change this during a lock	لا يمكن تغيير هذا أثناء القفل
+          Can't raise or remove limits during a lock	لا يمكن رفع الحدود أو إزالتها أثناء القفل
+          Can't remove PIN during a lock	لا يمكن إزالة رمز PIN أثناء القفل
+          Can't remove during a lock	لا يمكن الإزالة أثناء القفل
+          Cancel	إلغاء
+          Cancel request	إلغاء الطلب
+          Change PIN	تغيير رمز PIN
+          Change the app colour and light/dark mode	غيّر لون التطبيق والوضع الفاتح/الداكن
+          Change theme	تغيير المظهر
+          Children learn what they see you do.	يتعلّم الأطفال ما يرونك تفعله.
+          Choose UPI app	اختر تطبيق UPI
+          Choose apps	اختر التطبيقات
+          Chosen apps show a 10-second breathing screen first, then you decide. Research shows such short pauses cut mindless opening a lot.	تعرض التطبيقات المختارة أولًا شاشة تنفّس لمدة 10 ثوانٍ، ثم تقرر أنت. تُظهر الأبحاث أن هذه الوقفات القصيرة تقلل كثيرًا من الفتح بلا وعي.
+          Close	إغلاق
+          Colour	اللون
+          Copy ID and pay myself	انسخ المعرّف وادفع بنفسي
+          Could not open settings	تعذّر فتح الإعدادات
+          Couldn't open WhatsApp	تعذّر فتح واتساب
+          Couldn't open the browser	تعذّر فتح المتصفح
+          Couldn't open the payment page. Turn on the internet and try again.\n\n	تعذّر فتح صفحة الدفع. شغّل الإنترنت وحاول مجددًا.\n\n
+          Couldn't save, take a screenshot	تعذّر الحفظ، التقط لقطة شاشة
+          Crops ripen with patience. So do goals.	المحاصيل تنضج بالصبر، وكذلك الأهداف.
+          Customer phone ID	معرّف هاتف العميل
+          Daily average: 	المتوسط اليومي: 
+          Do one focus today	قم بجلسة تركيز واحدة اليوم
+          Do today's work today. Scrolling can wait.	أنجز عمل اليوم اليوم. التصفح يمكنه الانتظار.
+          Do tomorrow's work today, and today's work now.\nWho knows what the next moment brings; when will you do it then?	أنجز عمل الغد اليوم، وعمل اليوم الآن.\nمن يدري ما تحمله اللحظة القادمة؛ فمتى ستنجزه إذن؟
+          Downloaded file is not valid	الملف الذي تم تنزيله غير صالح
+          Downloading… 	جارٍ التنزيل… 
+          Dreams first, phone later.	الأحلام أولًا، والهاتف لاحقًا.
+          During a lock, notifications from locked apps are hidden. When it ends, one notification tells you how many came. Calls and other apps are not affected.	أثناء القفل، تُخفى إشعارات التطبيقات المقفلة. وعند انتهائه، يخبرك إشعار واحد بعددها. المكالمات والتطبيقات الأخرى لا تتأثر.
+          During focus/schedule, Force stop, Uninstall or turning off permissions is blocked.	أثناء التركيز/الجدول، يُمنع الإيقاف القسري والحذف وإيقاف الأذونات.
+          End	إنهاء
+          End the focus now?	إنهاء التركيز الآن؟
+          End the focus?	إنهاء التركيز؟
+          Enter a valid site like example.com	أدخل موقعًا صالحًا مثل example.com
+          Enter between 5 and 720	أدخل رقمًا بين 5 و720
+          Even a field turns green only with daily work.	حتى الحقل لا يخضرّ إلا بالعمل اليومي.
+          Every 'no' here is a 'yes' to something bigger.	كل "لا" هنا هي "نعم" لشيء أكبر.
+          Every moment with family is worth more than any reel.	كل لحظة مع العائلة أثمن من أي مقطع.
+          Every time you pause, your mind grows a little stronger.	في كل مرة تتوقف فيها، يصبح عقلك أقوى قليلًا.
+          Everything exists in this world, but one who makes no effort gains nothing.	كل شيء موجود في هذا العالم، لكن من لا يسعى لا ينال شيئًا.
+          Exercise, a book or work: anything beats a reel.	الرياضة أو كتاب أو العمل: أي شيء أفضل من مقطع قصير.
+          Facebook Reels are blocked 🚫	مقاطع Reels في فيسبوك محظورة
+          Family, village, dreams: all are built with your time.	العائلة والقرية والأحلام: كلها تُبنى بوقتك.
+          Finish your first focus session and your days will show here.	أكمل أول جلسة تركيز وستظهر أيامك هنا.
+          First focus	أول تركيز
+          Focus	التركيز
+          Focus 	التركيز 
+          Focus complete	اكتمل التركيز
+          Focus session · until 	جلسة تركيز · حتى 
+          Focus session: 	جلسة تركيز: 
+          Focus today	تركيز اليوم
+          Focus today: 	تركيز اليوم: 
+          For a child's phone. When on, opening the app only shows the lock status. Changing settings, ending a lock or loosening rules needs your PIN. Stats show how often locked apps were tried.	لهاتف طفل. عند التفعيل، لا يعرض فتح التطبيق إلا حالة القفل. تغيير الإعدادات أو إنهاء القفل أو تخفيف القواعد يحتاج إلى رمز PIN الخاص بك. تُظهر الإحصاءات عدد محاولات فتح التطبيقات المقفلة.
+          For me	لي
+          For one who has conquered the mind, the mind is the best of friends.	لمن غلب نفسه، تكون نفسه خير صديق.
+          Free includes: focus lock, Shorts/Reels block, locked apps' websites, widget, 1 schedule.	المجاني يشمل: قفل التركيز، حظر Shorts/Reels، مواقع التطبيقات المقفلة، الأداة، جدولًا واحدًا.
+          Free includes: focus lock, widget, 1 schedule.	المجاني يشمل: قفل التركيز، الأداة، جدولًا واحدًا.
+          Fresh start	بداية جديدة
+          Full sleep, sharp mind. Keep the phone away at night.	نوم كافٍ، عقل حاد. أبعد الهاتف ليلًا.
+          Getting distracted isn't failure. Coming back is victory.	التشتت ليس فشلًا. العودة هي الانتصار.
+          Give these 2 permissions to start:	امنح هذين الإذنين للبدء:
+          Have a code? Enter it here	لديك رمز؟ أدخله هنا
+          Held notifications	الإشعارات المحجوزة
+          Hi, I've paid for Palrakh Pro. Phone ID: 	مرحبًا، لقد دفعت مقابل Palrakh Pro. معرّف الهاتف: 
+          Hi, I've paid ₹	مرحبًا، لقد دفعت ₹
+          Hold notifications on	حجز الإشعارات مفعّل
+          How do you want to pay?\n\nIf the UPI app blocks the payment, pick the second way. It works in every UPI app.	كيف تريد الدفع؟\n\nإذا حظر تطبيق UPI الدفع، فاختر الطريقة الثانية. إنها تعمل في كل تطبيقات UPI.
+          How long?	كم من الوقت؟
+          How many minutes?	كم دقيقة؟
+          How points work: 1 point per focus minute. Half a point per minute below your 7-day average screen time. 5 points per streak day (max 150). All of it stays on your phone.	كيف تعمل النقاط: نقطة لكل دقيقة تركيز. نصف نقطة لكل دقيقة أقل من متوسط وقت الشاشة لديك خلال 7 أيام. 5 نقاط لكل يوم في السلسلة (بحد أقصى 150). كل ذلك يبقى على هاتفك.
+          I am opening this app on purpose	أفتح هذا التطبيق عن قصد
+          If Instagram is locked, instagram.com won't open in Chrome either. YouTube, Facebook, Snapchat, ShareChat, Moj, Josh, X, Reddit and more.	إذا كان Instagram مقفلًا، فلن يُفتح instagram.com في Chrome أيضًا. YouTube وFacebook وSnapchat وShareChat وMoj وJosh وX وReddit وغيرها.
+          In Chrome, Brave, Edge, Samsung, Firefox and more.	في Chrome وBrave وEdge وSamsung وFirefox وغيرها.
+          Instagram Reels are blocked 🚫	مقاطع Reels في إنستغرام محظورة
+          Installing… the app will restart in a few seconds.	جارٍ التثبيت… سيُعاد تشغيل التطبيق خلال ثوانٍ.
+          Installs with Play Protect on. Full app lock, schedules, limits and pause mode are here. Shorts/Reels block, website block, strict mode and notification hold are only in the Full version.	يُثبَّت مع تفعيل Play Protect. هنا قفل التطبيقات الكامل والجداول والحدود ووضع التوقف. أما حظر Shorts/Reels وحظر المواقع والوضع الصارم وحجز الإشعارات فهي في النسخة الكاملة فقط.
+          Just waiting is easy to beat; a small task makes the pause real.	الانتظار وحده سهل التجاوز؛ مهمة صغيرة تجعل الوقفة حقيقية.
+          Kabir	كبير
+          Katha Upanishad · Swami Vivekananda	كاثا أوبانيشاد · سوامي فيفيكاناندا
+          Language	اللغة
+          Later	لاحقًا
+          Lift yourself up by your own self.	ارفع نفسك بنفسك.
+          Limits	الحدود
+          Locked apps	التطبيقات المقفلة
+          Locked: 	المقفلة: 
+          Long-press the title to turn admin off.	اضغط مطولًا على العنوان لإيقاف وضع المسؤول.
+          Minutes (5 to 720)	الدقائق (من 5 إلى 720)
+          Mode	الوضع
+          Most used apps (today)	أكثر التطبيقات استخدامًا (اليوم)
+          Needed, or the lock may stop. Tap here.	ضروري، وإلا قد يتوقف القفل. اضغط هنا.
+          Never mind	لا يهم
+          New PIN (4 to 8 digits)	رمز PIN جديد (من 4 إلى 8 أرقام)
+          New update: v	تحديث جديد: v
+          Next emergency unlock in 	فتح الطوارئ التالي بعد 
+          No	لا
+          No UPI app found. UPI ID copied: 	لم يُعثر على تطبيق UPI. تم نسخ معرّف UPI: 
+          No apps chosen yet	لم تُختر أي تطبيقات بعد
+          No data yet today.	لا توجد بيانات اليوم بعد.
+          No limit	بلا حد
+          No lock right now	لا يوجد قفل الآن
+          No new app downloads or installs during a lock (Play Store and Xiaomi/Vivo/Oppo/Samsung stores).	لا تنزيل أو تثبيت لتطبيقات جديدة أثناء القفل (Play Store ومتاجر Xiaomi/Vivo/Oppo/Samsung).
+          No, keep focusing	لا، سأواصل التركيز
+          None at all 👏	لا شيء إطلاقًا
+          Note: YouTube/Instagram change their design often. Tell us if Shorts stop getting blocked.	ملاحظة: يغيّر YouTube وInstagram تصميمهما كثيرًا. أخبرنا إن توقف حظر Shorts.
+          Nothing	لا شيء
+          Nothing can unlock it before the time is up.	لا شيء يمكنه فتحه قبل انتهاء الوقت.
+          Now you decide	الآن القرار لك
+          OK	حسنًا
+          OPPO / Realme / OnePlus	OPPO / Realme / OnePlus
+          Off ❌	متوقف
+          On ✅	مفعّل
+          One focused hour today is one step ahead tomorrow.	ساعة تركيز اليوم خطوة إلى الأمام غدًا.
+          One page of a book beats a hundred reels.	صفحة من كتاب خير من مئة مقطع.
+          One task, full attention.	مهمة واحدة، انتباه كامل.
+          Only a parent can change settings with the PIN.	لا يمكن تغيير الإعدادات إلا لأحد الوالدين باستخدام رمز PIN.
+          Only during focus/schedule	فقط أثناء التركيز/الجدول
+          Only for real emergencies. Once a week, with a 10-minute wait after asking.	للطوارئ الحقيقية فقط. مرة في الأسبوع، مع انتظار 10 دقائق بعد الطلب.
+          Open	فتح
+          Open Palrakh to update.\n	افتح Palrakh للتحديث.\n
+          Open UPI app	افتح تطبيق UPI
+          Open anyway (	افتح على أي حال (
+          Open app settings	افتح إعدادات التطبيق
+          Opening 	جارٍ فتح 
+          Opening payment page…	جارٍ فتح صفحة الدفع…
+          Or pay ₹	أو ادفع ₹
+          Others' lives are on the screen. Yours is right in front of you.	على الشاشة حياة الآخرين. وحياتك أمامك مباشرة.
+          PIN must be 4 to 8 digits	يجب أن يتكوّن رمز PIN من 4 إلى 8 أرقام
+          PIN removed	تمت إزالة رمز PIN
+          PINs don't match	رمزا PIN غير متطابقين
+          Paid but Pro didn't turn on?	دفعت ولم يتفعّل Pro؟
+          Palrakh	Palrakh
+          Palrakh 	Palrakh 
+          Palrakh Pro 	Palrakh Pro 
+          Palrakh update failed	فشل تحديث Palrakh
+          Palrakh update is ready	تحديث Palrakh جاهز
+          Palrakh updated to v	تم تحديث Palrakh إلى v
+          Palrakh v	Palrakh v
+          Palrakh will now update to the new version.	سيتم الآن تحديث Palrakh إلى الإصدار الجديد.
+          Parent mode on  	وضع الوالدين مفعّل  
+          Pause mode on	وضع التوقف مفعّل
+          Pause. Do you really need it now?	توقف. هل تحتاجه حقًا الآن؟
+          Pay on Razorpay by UPI, card or net banking. Pro turns on by itself as soon as you pay.	ادفع عبر Razorpay باستخدام UPI أو البطاقة أو الخدمات المصرفية عبر الإنترنت. يتفعّل Pro تلقائيًا فور الدفع.
+          Payment is handled securely by Razorpay. The app only sends your phone ID, no personal data.	تتم معالجة الدفع بأمان عبر Razorpay. لا يرسل التطبيق سوى معرّف هاتفك، دون أي بيانات شخصية.
+          Payment received. Pro is on for 	تم استلام الدفع. Pro مفعّل لمدة 
+          Phone ID has 8 characters	معرّف الهاتف مكوّن من 8 أحرف
+          Phone ID: 	معرّف الهاتف: 
+          Pick a plan and pay	اختر خطة وادفع
+          Pick at least one app	اختر تطبيقًا واحدًا على الأقل
+          Pick at least one day	اختر يومًا واحدًا على الأقل
+          Pro is on	Pro مفعّل
+          Protection can't be turned off during a lock 🔒	لا يمكن إيقاف الحماية أثناء القفل
+          Protection off	الحماية متوقفة
+          Razorpay page	صفحة Razorpay
+          Reel	مقطع
+          Reels	مقاطع Reels
+          Remove PIN	إزالة رمز PIN
+          Repeat PIN	أعد إدخال رمز PIN
+          Request emergency unlock	طلب فتح طارئ
+          Run in background	التشغيل في الخلفية
+          Samsung	Samsung
+          Scan from another phone, or save it to your gallery and use "scan from gallery" in your UPI app.	امسحه ضوئيًا من هاتف آخر، أو احفظه في المعرض واستخدم "المسح من المعرض" في تطبيق UPI.
+          Schedule	الجدول
+          Schedule is on	الجدول مفعّل
+          Schedule turned off	تم إيقاف الجدول
+          Screen time today	وقت الشاشة اليوم
+          Send	إرسال
+          Send the payment screenshot and this phone ID on WhatsApp.	أرسل لقطة شاشة الدفع ومعرّف الهاتف هذا عبر واتساب.
+          Set PIN	تعيين رمز PIN
+          Set a parent PIN first	عيّن رمز PIN للوالدين أولًا
+          Settings	الإعدادات
+          Settings → Apps → Palrakh → top ⋮ → "Allow restricted settings", then try again.	الإعدادات ← التطبيقات ← Palrakh ← ⋮ في الأعلى ← "السماح بالإعدادات المقيّدة"، ثم حاول مجددًا.
+          Shorts, websites and strict mode will work.	ستعمل Shorts والمواقع والوضع الصارم.
+          Slowly, O mind, everything happens in its time.\nThe gardener may pour a hundred pots, but fruit comes only in its season.	تمهّلي يا نفس، فكل شيء يأتي في وقته.\nقد يسكب البستاني مئة جرّة، لكن الثمر لا يأتي إلا في موسمه.
+          Small focus, big results.	تركيز صغير، نتائج كبيرة.
+          Small improvements	تحسينات صغيرة
+          So Palrakh can't be removed during a lock.	حتى لا يمكن حذف Palrakh أثناء القفل.
+          So Palrakh can't be removed during a lock. It reads no data.	حتى لا يمكن حذف Palrakh أثناء القفل. لا يقرأ أي بيانات.
+          Start	ابدأ
+          Start and end must differ	يجب أن تختلف البداية عن النهاية
+          Start for sure?	هل أنت متأكد من البدء؟
+          Start without it	ابدأ بدونه
+          Starting download…	جارٍ بدء التنزيل…
+          Stats	الإحصاءات
+          Streak	السلسلة
+          Strict mode: this setting is locked right now 🔒	الوضع الصارم: هذا الإعداد مقفل الآن
+          Take a screenshot to save it on this phone	التقط لقطة شاشة لحفظه على هذا الهاتف
+          Tap for another thought	اضغط لفكرة أخرى
+          Tap here to install	اضغط هنا للتثبيت
+          Tap here → Installed/Downloaded apps → "Palrakh – Shorts/Reels block" → ON	اضغط هنا ← التطبيقات المثبتة/المنزّلة ← "Palrakh – Shorts/Reels block" ← تفعيل
+          The app works, only Shorts/Reels are blocked (in app and browser).	يعمل التطبيق، وتُحظر Shorts/Reels فقط (في التطبيق والمتصفح).
+          The new version is ready	الإصدار الجديد جاهز
+          The next emergency unlock is available in 7 days.	يتوفر فتح الطوارئ التالي بعد 7 أيام.
+          The reels never end. Your time does.	المقاطع لا تنتهي أبدًا. وقتك هو الذي ينتهي.
+          This app	هذا التطبيق
+          This code has expired	انتهت صلاحية هذا الرمز
+          This lock won't open before time is up.	لن يُفتح هذا القفل قبل انتهاء الوقت.
+          This stops Palrakh from being removed without permission. It reads no data.	يمنع هذا حذف Palrakh دون إذن. لا يقرأ أي بيانات.
+          This stops the phone from killing the lock. Do it when no lock is running.	يمنع هذا الهاتف من إيقاف القفل. افعل ذلك حين لا يعمل أي قفل.
+          Those who searched, found, by diving into deep water.	من بحث وجد، بالغوص في الماء العميق.
+          Time saved is real earnings.	الوقت الذي توفّره هو المكسب الحقيقي.
+          Tired eyes? Look far out of the window for 20 seconds.	عيناك متعبتان؟ انظر بعيدًا من النافذة لمدة 20 ثانية.
+          Today is #	اليوم هو رقم
+          Today you paused and closed 	اليوم توقفت وأغلقت 
+          Today's study is tomorrow's income.	دراسة اليوم هي دخل الغد.
+          Today, talk face to face with someone you love instead of over the phone.	اليوم، تحدّث وجهًا لوجه مع من تحب بدلًا من الهاتف.
+          Today: 	اليوم: 
+          Today: closed 	اليوم: أُغلق 
+          Try 3 days for just ₹1. Then ₹99 a month or ₹999 a year.	جرّب 3 أيام مقابل ₹1 فقط. ثم ₹99 شهريًا أو ₹999 سنويًا.
+          Try again	حاول مجددًا
+          Tulsidas, Ramcharitmanas	تولسيداس، رامتشاريتماناس
+          Turn off protection	إيقاف الحماية
+          Turn on "Allow display over other apps"	فعّل "السماح بالظهور فوق التطبيقات الأخرى"
+          Turn on "Palrakh" in the list	فعّل "Palrakh" في القائمة
+          Turn on "Uninstall protection" in the 🛡️ Block tab so the app can't be uninstalled during a lock. Tap here.	فعّل "الحماية من الحذف" في تبويب الحظر حتى لا يمكن حذف التطبيق أثناء القفل. اضغط هنا.
+          Turn on the block service, strict mode and "Uninstall protection" in the 🛡️ Block tab. Tap here.	فعّل خدمة الحظر والوضع الصارم و"الحماية من الحذف" في تبويب الحظر. اضغط هنا.
+          Turning this off lets Palrakh be removed.	إيقاف هذا يسمح بحذف Palrakh.
+          Type it here	اكتبه هنا
+          UPI ID: 	معرّف UPI: 
+          Update failed, will try again later. 	فشل التحديث، ستتم المحاولة لاحقًا. 
+          Vivo / iQOO	Vivo / iQOO
+          Wait over. You may end the focus now (it won't count toward your streak).	انتهى الانتظار. يمكنك إنهاء التركيز الآن (لن يُحتسب في سلسلتك).
+          Watching limits and schedule	مراقبة الحدود والجدول
+          Water fills drop by drop. Knowledge grows moment by moment.	الماء يمتلئ قطرة قطرة، والعلم ينمو لحظة بلحظة.
+          Website block on	حظر المواقع مفعّل
+          What you get with Pro	ما تحصل عليه مع Pro
+          What you sow today is what you harvest tomorrow.	ما تزرعه اليوم تحصده غدًا.
+          What's new:	الجديد:
+          What's new:\n\n	الجديد:\n\n
+          When on, the app can't be uninstalled directly. Trying to turn it off during a lock sends the phone home and locks the screen. It can't be turned off during a lock.	عند التفعيل، لا يمكن حذف التطبيق مباشرة. محاولة إيقافه أثناء القفل تعيد الهاتف إلى الشاشة الرئيسية وتقفل الشاشة. لا يمكن إيقافه أثناء القفل.
+          When the limit is reached, the app stays locked until midnight.	عند بلوغ الحد، يبقى التطبيق مقفلًا حتى منتصف الليل.
+          Which apps to lock?	أي التطبيقات تريد قفلها؟
+          Which days?	أي الأيام؟
+          Will try again later. 	ستتم المحاولة لاحقًا. 
+          Win over your mind and the phone loses on its own.	انتصر على نفسك، وسيخسر الهاتف من تلقاء نفسه.
+          Without it, someone could uninstall the app to break the lock. You only need to turn it on once.	بدونه قد يحذف أحدهم التطبيق لكسر القفل. تحتاج إلى تفعيله مرة واحدة فقط.
+          Write your phone ID (below) in the note.	اكتب معرّف هاتفك (في الأسفل) في الملاحظة.
+          Wrong	خطأ
+          Wrong PIN	رمز PIN خاطئ
+          Xiaomi / Redmi / POCO	Xiaomi / Redmi / POCO
+          Yes	نعم
+          Yes, start	نعم، ابدأ
+          Yes, turn on	نعم، فعّل
+          Yes, unlock	نعم، افتح
+          You can do more than you think. Just focus.	يمكنك أن تفعل أكثر مما تظن. ركّز فقط.
+          You have a right to your work alone, never to its fruits.	لك الحق في عملك وحده، لا في ثماره.
+          You made this promise to yourself. Keep it.	لقد وعدت نفسك بهذا. فأوفِ به.
+          You're on the Free plan	أنت على الخطة المجانية
+          YouTube Shorts are blocked 🚫	مقاطع YouTube Shorts محظورة
+          Your Palrakh Pro code: 	رمز Palrakh Pro الخاص بك: 
+          Your best days	أفضل أيامك
+          Your best weeks	أفضل أسابيعك
+          Your focus, your rules	تركيزك، قواعدك
+          Your phone is a tool, not your master.	هاتفك أداة، وليس سيدك.
+          left	متبقية
+          not even by changing the phone time or restarting.	ولا حتى بتغيير وقت الهاتف أو إعادة تشغيله.
+          until 	حتى 
+          ⏳ Daily limit for each app	حد يومي لكل تطبيق
+          ⏳ Daily limit: 	الحد اليومي: 
+          ⏳ Daily limits	الحدود اليومية
+          ⏳ You can unlock in 	يمكنك الفتح بعد 
+          ⏸️ Pause mode	وضع التوقف
+          ⏸️ Pause mode + math unlock	وضع التوقف + فتح بمسألة حسابية
+          ⏸️ Pause mode + ➗ math unlock	وضع التوقف + فتح بمسألة حسابية
+          ⏹️ End focus	إنهاء التركيز
+          ▶️ YouTube Shorts	YouTube Shorts
+          ☀️ Light	فاتح
+          ⚠️ If you see "Restricted setting"	إذا ظهر "إعداد مقيّد"
+          ⚠️ Lock is not fully strict yet	القفل ليس صارمًا تمامًا بعد
+          ⚠️ Turn it on once more (for the new protection). Tap here.	فعّله مرة أخرى (للحماية الجديدة). اضغط هنا.
+          ⚠️ Won't work without the permission	لن يعمل دون الإذن
+          ⚡ Remove battery restriction	إزالة قيود البطارية
+          ✅ Activate Pro	تفعيل Pro
+          ✅ Block service is ON	خدمة الحظر مفعّلة
+          ✅ On. PIN will be asked after 10 min or on "Lock now"	مفعّل. سيُطلب رمز PIN بعد 10 دقائق أو عند "اقفل الآن"
+          ✅ PIN set	تم تعيين رمز PIN
+          ✅ Pro is on · until 	Pro مفعّل · حتى 
+          ✅ Pro on for your phone	Pro مفعّل على هاتفك
+          ✅ Saved to gallery (Pictures/Palrakh)	تم الحفظ في المعرض (Pictures/Palrakh)
+          ✅ Schedule saved and on	تم حفظ الجدول وتفعيله
+          ✅ UPI ID copied	تم نسخ معرّف UPI
+          ✋  Close the app	أغلق التطبيق
+          ✍️ Type a line	اكتب جملة
+          ✍️ Type this sentence exactly	اكتب هذه الجملة كما هي تمامًا
+          ✏️ Custom	مخصص
+          ❌ Block service is OFF	خدمة الحظر متوقفة
+          ❌ Not right, wait 10 seconds again	غير صحيح، انتظر 10 ثوانٍ أخرى
+          ❌ Wrong code (or for another phone)	رمز خاطئ (أو لهاتف آخر)
+          ➗ Math	مسألة حسابية
+          ➗ Solve this first	حلّ هذا أولًا
+          ⭐ Palrakh Pro	Palrakh Pro
+          ⭐ Pro feature	ميزة Pro
+          ⭐ See Pro	عرض Pro
+          🆘 Emergency unlock	فتح الطوارئ
+          🌅 Sunset	الغروب
+          🌊 Ocean	المحيط
+          🌌 Indigo	النيلي
+          🌐 Block any websites you choose	احظر أي مواقع تختارها
+          🌐 Lock the website of locked apps	اقفل موقع التطبيقات المقفلة
+          🌐 Website block	حظر المواقع
+          🌗 Auto	تلقائي
+          🌙 Dark	داكن
+          🌱 Try: 3 days	جرّب: 3 أيام
+          🌿 Forest	الغابة
+          🍅 25 = Pomodoro (25 min deep work)	25 = بومودورو (25 دقيقة من العمل العميق)
+          🍅 25 min focus	تركيز 25 دقيقة
+          🎉 Pro is on!	تم تفعيل Pro!
+          🎉 Well done! Focus complete	أحسنت! اكتمل التركيز
+          🎖️ Badges (	الشارات (
+          🎨 Appearance	المظهر
+          🏆 1 year (save ₹189)	سنة واحدة (وفّر ₹189)
+          🏆 Beat your best + 🎖️ Badges	تفوّق على أفضل نتيجة لك + الشارات
+          🏆 Beat your best + 🎖️ badges	تفوّق على أفضل نتيجة لك + الشارات
+          🏆 Beat your own best	تفوّق على أفضل نتيجة لك
+          🏠  Go to Home	اذهب إلى الشاشة الرئيسية
+          👋 Welcome!	مرحبًا بك!
+          👍 Great! Focus continues	رائع! التركيز مستمر
+          👨‍👩‍👧 Family	العائلة
+          👨‍👩‍👧 Open as parent (10 min)	افتح كأحد الوالدين (10 دقائق)
+          👨‍👩‍👧 Parent mode	وضع الوالدين
+          👨‍👩‍👧 Parent mode (for kids' phones)	وضع الوالدين (لهواتف الأطفال)
+          👨‍👩‍👧 Parent mode is on	وضع الوالدين مفعّل
+          💡 Thought for today	فكرة اليوم
+          💬 Open WhatsApp	افتح واتساب
+          💬 Send on WhatsApp	أرسل عبر واتساب
+          💬 Send to customer	أرسل إلى العميل
+          💾  Save: 	حفظ: 
+          📅 1 month	شهر واحد
+          📅 3 schedule profiles (sleep, family)	3 ملفات جدولة (النوم، العائلة)
+          📅 Daily schedule	الجدول اليومي
+          📅 Schedule: 	الجدول: 
+          📈 Last 7 days	آخر 7 أيام
+          📋 Copied	تم النسخ
+          📋 Copy	نسخ
+          📋 Copy ID	نسخ المعرّف
+          📘 Facebook Reels (beta)	مقاطع Reels في فيسبوك (تجريبي)
+          📚 Work / Study	العمل / الدراسة
+          📱 Battery settings for your phone (	إعدادات البطارية لهاتفك (
+          📷 Pay by QR	الدفع عبر QR
+          📸 Instagram Reels	مقاطع Reels في إنستغرام
+          🔐 Security	الأمان
+          🔑  Open for parent	افتح لأحد الوالدين
+          🔑 Enter PIN	أدخل رمز PIN
+          🔑 PIN (optional)	رمز PIN (اختياري)
+          🔑 PIN is set	تم تعيين رمز PIN
+          🔑 Set PIN	تعيين رمز PIN
+          🔒  Start focus	ابدأ التركيز
+          🔒 A lock is running (	يوجد قفل يعمل (
+          🔒 A schedule lock is running. Don't turn this off now.	يوجد قفل جدول يعمل. لا توقفه الآن.
+          🔒 Focus session running	جلسة تركيز جارية
+          🔒 Focus started	بدأ التركيز
+          🔒 Focus/schedule running: you can only add or reduce limits now.	التركيز/الجدول جارٍ: يمكنك الآن فقط إضافة الحدود أو تقليلها.
+          🔒 Focus: 	التركيز: 
+          🔒 Lock now	اقفل الآن
+          🔒 Locked until 	مقفل حتى 
+          🔒 Palrakh	Palrakh
+          🔒 Play Store and new installs are locked right now	متجر Play والتثبيتات الجديدة مقفلة الآن
+          🔓 Unlock now	افتح الآن
+          🔓 Unlocked	تم الفتح
+          🔕 Hold notifications	حجز الإشعارات
+          🔕 Hold notifications during a lock	حجز الإشعارات أثناء القفل
+          🔕 Hold notifications, ⏸️ Pause mode, 🌐 Website block	حجز الإشعارات، وضع التوقف، حظر المواقع
+          🔗 Make the lock tighter	اجعل القفل أكثر إحكامًا
+          🖼️ Save to gallery	احفظ في المعرض
+          😴 Sleep	النوم
+          🚫 Shorts & Reels	Shorts وReels
+          🚫 Tries to open locked apps today	محاولات فتح التطبيقات المقفلة اليوم
+          🛒 Lock Play Store during a lock	اقفل متجر Play أثناء القفل
+          🛠️ Make a code (admin only)	إنشاء رمز (للمسؤول فقط)
+          🛡️ Strict lock is ON	القفل الصارم مفعّل
+          🛡️ Strict mode	الوضع الصارم
+          🛡️ Turn on protection	فعّل الحماية
+          🛡️ Turn on uninstall protection first?	تفعيل الحماية من الحذف أولًا؟
+          🛡️ Uninstall protection	الحماية من الحذف
+          🟢 running now  ● on	يعمل الآن  ● مفعّل
+          🪔 Diya	ديا
+          🪶 This is the Lite version	هذه هي النسخة الخفيفة (Lite)
+          hr	ساعة
+          min	دقيقة
+          hour	ساعة
+          hours	ساعات
+          ENDOFFILE
+          mkdir -p FocusLock/app/src/main/assets/i18n
+          cat > FocusLock/app/src/main/assets/i18n/es.tsv <<'ENDOFFILE'
+          \nEnter it in the app under ⭐ → 3️⃣.	\nIngrésalo en la app en Pro.
+          \nOpen the apps to see them.	\nAbre las apps para verlas.
+          \nOpens again tomorrow	\nSe abre de nuevo mañana
+          \nYou can edit it after it ends.	\nPuedes editarlo cuando termine.
+           (today)	 (hoy)
+           (until 	 (hasta 
+           + less phone 	 + menos móvil 
+           + streak 	 + racha 
+           apps locked	 apps bloqueadas
+           apps will be locked for 	 apps se bloquearán durante 
+           apps: 	 apps: 
+           days	 días
+           days)	 días)
+           days.	 días.
+           days. Thank you!	 días. ¡Gracias!
+           for Palrakh Pro. Phone ID: 	 por Palrakh Pro. ID del teléfono: 
+           is available	 está disponible
+           is blocked	 está bloqueado
+           is locked now	 está bloqueada ahora
+           is locked too (the app is locked)	 también está bloqueado (la app está bloqueada)
+           is on	 está activo
+           is running now	 está activo ahora
+           left	 restantes
+           left). Don't turn this off now.	 restantes). No lo desactives ahora.
+           min)	 min)
+           notifications held during the lock	 notificaciones retenidas durante el bloqueo
+           of focus done. All apps are open again.	 de enfoque completado. Todas las apps están abiertas de nuevo.
+           of your 	 de tus 
+           on  	 el  
+           on WhatsApp to get your code.	 por WhatsApp para recibir tu código.
+           on the Razorpay page and send phone ID 	 en la página de Razorpay y envía el ID del teléfono 
+           on until 	 activo hasta 
+           points today	 puntos hoy
+           profile	 perfil
+           pts	 pts
+           times	 veces
+           times after pausing · opened 	 veces tras pausar · abierta 
+           times 👏	 veces
+           · Locked: 	 · Bloqueadas: 
+           · best 	 · mejor 
+           · until 	 · hasta 
+           – how long per day?	 – ¿cuánto tiempo al día?
+          "Just 5 minutes" becomes an hour. Stop here.	"Solo 5 minutos" se convierte en una hora. Para aquí.
+          ).\n\nThis lock cannot be opened early, 	).\n\nEste bloqueo no se puede abrir antes, 
+          + Add website	+ Añadir sitio web
+          + Limit	+ Límite
+          -day streak	-días de racha
+          1 month	1 mes
+          1 year	1 año
+          1. Open your UPI app (GPay / PhonePe / Paytm)\n	1. Abre tu app de UPI (GPay / PhonePe / Paytm)\n
+          1. Settings → Apps → Palrakh → Autostart ON\n2. Battery saver → No restrictions\n3. In Recent apps, pull Palrakh down and tap 🔒	1. Ajustes → Apps → Palrakh → Inicio automático ACTIVADO\n2. Ahorro de batería → Sin restricciones\n3. En Apps recientes, baja Palrakh y toca el candado
+          1. Settings → Apps → Palrakh → Battery usage\n2. Turn on Allow background activity + Allow auto launch\n3. Lock the app 🔒 in Recent apps	1. Ajustes → Apps → Palrakh → Uso de batería\n2. Activa Permitir actividad en segundo plano + Permitir inicio automático\n3. Bloquea la app en Apps recientes
+          1. Settings → Apps → Palrakh → Battery → Unrestricted\n2. If there is an Autostart option, turn it on	1. Ajustes → Apps → Palrakh → Batería → Sin restricciones\n2. Si hay una opción de Inicio automático, actívala
+          1. Settings → Battery → Background power consumption → Palrakh → Allow\n2. i Manager → App manager → Autostart → Palrakh ON\n3. Keep Ultra power saving off	1. Ajustes → Batería → Consumo en segundo plano → Palrakh → Permitir\n2. i Manager → Gestor de apps → Inicio automático → Palrakh ACTIVADO\n3. Mantén desactivado el ahorro de energía extremo
+          1. Settings → Battery → Background usage limits → add Palrakh to Never sleeping apps\n2. App info → Battery → Unrestricted	1. Ajustes → Batería → Límites de uso en segundo plano → añade Palrakh a Apps que nunca se suspenden\n2. Info de la app → Batería → Sin restricciones
+          1. Usage access	1. Acceso al uso
+          10 hours of focus	10 horas de enfoque
+          2. Choose "Pay to UPI ID" and paste the copied ID:\n    	2. Elige "Pagar a ID de UPI" y pega el ID copiado:\n    
+          2. Display over other apps	2. Mostrar sobre otras apps
+          3 days	3 días
+          3 separate profiles: each with its own time, days and apps.	3 perfiles separados: cada uno con su hora, días y apps.
+          3-day streak	Racha de 3 días
+          3. Amount: ₹	3. Importe: ₹
+          30-day streak	Racha de 30 días
+          4. In the note / message write: 	4. En la nota o mensaje escribe: 
+          5. Send the screenshot on WhatsApp to get your code.	5. Envía la captura por WhatsApp para recibir tu código.
+          50 hours of focus	50 horas de enfoque
+          7-day streak	Racha de 7 días
+          : today's limit reached	: límite de hoy alcanzado
+          A 100-point day	Un día de 100 puntos
+          A 300-point day	Un día de 300 puntos
+          A day under 2 hours	Un día con menos de 2 horas
+          A little discomfort today, a big comfort tomorrow.	Un poco de incomodidad hoy, una gran comodidad mañana.
+          A promise to yourself is the biggest promise.	Una promesa a ti mismo es la promesa más grande.
+          Add website	Añadir sitio web
+          After "Open anyway", allow for	Tras "Abrir igualmente", permitir durante
+          All apps will open. It won't count toward the streak.	Se abrirán todas las apps. No contará para la racha.
+          Allow	Permitir
+          Allow first: tap here → "Palrakh – Notification hold" → ON	Primero permite: toca aquí → "Palrakh – Notification hold" → ACTIVADO
+          Allow once: turn on "Allow" for Palrakh on the next screen, then come back.	Permite una vez: activa "Permitir" para Palrakh en la siguiente pantalla y vuelve.
+          Also keep 🛡️ "Uninstall protection" on (above).	Mantén también activada la "Protección contra desinstalación" (arriba).
+          Also turn on the block service	Activa también el servicio de bloqueo
+          Android	Android
+          Answer	Respuesta
+          Any loosening (removing limits, turning off blocks) needs the PIN.	Cualquier relajación (quitar límites, desactivar bloqueos) necesita el PIN.
+          App updates	Actualizaciones de la app
+          Appearance	Apariencia
+          Apps for pause mode	Apps para el modo pausa
+          Apps stay locked meanwhile. Cancel if it is not really urgent.	Las apps siguen bloqueadas mientras tanto. Cancela si no es realmente urgente.
+          Arise, awake, and stop not till the goal is reached.	Levántate, despierta y no te detengas hasta alcanzar la meta.
+          Ask a trusted person to set it. Then loosening needs them.	Pide a una persona de confianza que lo configure. Así, relajar las reglas dependerá de ella.
+          Attention is your real power.	La atención es tu verdadero poder.
+          Before "Open anyway", you must	Antes de "Abrir igualmente", debes
+          Bhagavad Gita 2.47	Bhagavad Gita 2.47
+          Bhagavad Gita 6.5	Bhagavad Gita 6.5
+          Bhagavad Gita 6.6 (meaning)	Bhagavad Gita 6.6 (significado)
+          Block	Bloqueo
+          Boredom isn't bad. New ideas grow in it.	El aburrimiento no es malo. En él nacen nuevas ideas.
+          Breathe in…	Inhala…
+          Breathe out…	Exhala…
+          Can't change this during a lock	No se puede cambiar durante un bloqueo
+          Can't raise or remove limits during a lock	No se pueden subir ni quitar límites durante un bloqueo
+          Can't remove PIN during a lock	No se puede quitar el PIN durante un bloqueo
+          Can't remove during a lock	No se puede quitar durante un bloqueo
+          Cancel	Cancelar
+          Cancel request	Cancelar solicitud
+          Change PIN	Cambiar PIN
+          Change the app colour and light/dark mode	Cambia el color de la app y el modo claro/oscuro
+          Change theme	Cambiar tema
+          Children learn what they see you do.	Los niños aprenden lo que te ven hacer.
+          Choose UPI app	Elige la app de UPI
+          Choose apps	Elegir apps
+          Chosen apps show a 10-second breathing screen first, then you decide. Research shows such short pauses cut mindless opening a lot.	Las apps elegidas muestran primero una pantalla de respiración de 10 segundos y luego decides tú. Los estudios muestran que estas pausas cortas reducen mucho la apertura automática.
+          Close	Cerrar
+          Colour	Color
+          Copy ID and pay myself	Copiar el ID y pagar yo mismo
+          Could not open settings	No se pudieron abrir los ajustes
+          Couldn't open WhatsApp	No se pudo abrir WhatsApp
+          Couldn't open the browser	No se pudo abrir el navegador
+          Couldn't open the payment page. Turn on the internet and try again.\n\n	No se pudo abrir la página de pago. Activa internet e inténtalo de nuevo.\n\n
+          Couldn't save, take a screenshot	No se pudo guardar, haz una captura
+          Crops ripen with patience. So do goals.	Las cosechas maduran con paciencia. Las metas también.
+          Customer phone ID	ID del teléfono del cliente
+          Daily average: 	Media diaria: 
+          Do one focus today	Haz un enfoque hoy
+          Do today's work today. Scrolling can wait.	Haz hoy el trabajo de hoy. El scroll puede esperar.
+          Do tomorrow's work today, and today's work now.\nWho knows what the next moment brings; when will you do it then?	Haz hoy el trabajo de mañana, y ahora el de hoy.\n¿Quién sabe qué traerá el próximo momento? ¿Cuándo lo harás entonces?
+          Downloaded file is not valid	El archivo descargado no es válido
+          Downloading… 	Descargando… 
+          Dreams first, phone later.	Primero los sueños, después el móvil.
+          During a lock, notifications from locked apps are hidden. When it ends, one notification tells you how many came. Calls and other apps are not affected.	Durante un bloqueo, las notificaciones de las apps bloqueadas se ocultan. Al terminar, una notificación te dice cuántas llegaron. Las llamadas y otras apps no se ven afectadas.
+          During focus/schedule, Force stop, Uninstall or turning off permissions is blocked.	Durante el enfoque o el horario, se bloquean Forzar detención, Desinstalar y desactivar permisos.
+          End	Terminar
+          End the focus now?	¿Terminar el enfoque ahora?
+          End the focus?	¿Terminar el enfoque?
+          Enter a valid site like example.com	Escribe un sitio válido, como example.com
+          Enter between 5 and 720	Escribe un valor entre 5 y 720
+          Even a field turns green only with daily work.	Hasta un campo se vuelve verde solo con trabajo diario.
+          Every 'no' here is a 'yes' to something bigger.	Cada "no" aquí es un "sí" a algo más grande.
+          Every moment with family is worth more than any reel.	Cada momento en familia vale más que cualquier reel.
+          Every time you pause, your mind grows a little stronger.	Cada vez que haces una pausa, tu mente se fortalece un poco.
+          Everything exists in this world, but one who makes no effort gains nothing.	Todo existe en este mundo, pero quien no se esfuerza no consigue nada.
+          Exercise, a book or work: anything beats a reel.	Ejercicio, un libro o trabajo: cualquier cosa es mejor que un reel.
+          Facebook Reels are blocked 🚫	Los Reels de Facebook están bloqueados
+          Family, village, dreams: all are built with your time.	Familia, pueblo, sueños: todo se construye con tu tiempo.
+          Finish your first focus session and your days will show here.	Completa tu primera sesión de enfoque y tus días aparecerán aquí.
+          First focus	Primer enfoque
+          Focus	Enfoque
+          Focus 	Enfoque 
+          Focus complete	Enfoque completado
+          Focus session · until 	Sesión de enfoque · hasta 
+          Focus session: 	Sesión de enfoque: 
+          Focus today	Enfoque de hoy
+          Focus today: 	Enfoque de hoy: 
+          For a child's phone. When on, opening the app only shows the lock status. Changing settings, ending a lock or loosening rules needs your PIN. Stats show how often locked apps were tried.	Para el móvil de un niño. Cuando está activo, abrir la app solo muestra el estado del bloqueo. Cambiar ajustes, terminar un bloqueo o relajar reglas necesita tu PIN. Las estadísticas muestran cuántas veces se intentaron abrir apps bloqueadas.
+          For me	Para mí
+          For one who has conquered the mind, the mind is the best of friends.	Para quien ha conquistado su mente, la mente es el mejor amigo.
+          Free includes: focus lock, Shorts/Reels block, locked apps' websites, widget, 1 schedule.	Gratis incluye: bloqueo de enfoque, bloqueo de Shorts/Reels, sitios web de apps bloqueadas, widget, 1 horario.
+          Free includes: focus lock, widget, 1 schedule.	Gratis incluye: bloqueo de enfoque, widget, 1 horario.
+          Fresh start	Nuevo comienzo
+          Full sleep, sharp mind. Keep the phone away at night.	Sueño completo, mente lúcida. Aleja el móvil por la noche.
+          Getting distracted isn't failure. Coming back is victory.	Distraerse no es fracasar. Volver es ganar.
+          Give these 2 permissions to start:	Da estos 2 permisos para empezar:
+          Have a code? Enter it here	¿Tienes un código? Escríbelo aquí
+          Held notifications	Notificaciones retenidas
+          Hi, I've paid for Palrakh Pro. Phone ID: 	Hola, he pagado Palrakh Pro. ID del teléfono: 
+          Hi, I've paid ₹	Hola, he pagado ₹
+          Hold notifications on	Retener notificaciones activado
+          How do you want to pay?\n\nIf the UPI app blocks the payment, pick the second way. It works in every UPI app.	¿Cómo quieres pagar?\n\nSi la app de UPI bloquea el pago, elige la segunda opción. Funciona en todas las apps de UPI.
+          How long?	¿Cuánto tiempo?
+          How many minutes?	¿Cuántos minutos?
+          How points work: 1 point per focus minute. Half a point per minute below your 7-day average screen time. 5 points per streak day (max 150). All of it stays on your phone.	Cómo funcionan los puntos: 1 punto por minuto de enfoque. Medio punto por minuto por debajo de tu media de pantalla de 7 días. 5 puntos por día de racha (máx. 150). Todo se queda en tu teléfono.
+          I am opening this app on purpose	Estoy abriendo esta app a propósito
+          If Instagram is locked, instagram.com won't open in Chrome either. YouTube, Facebook, Snapchat, ShareChat, Moj, Josh, X, Reddit and more.	Si Instagram está bloqueado, instagram.com tampoco se abrirá en Chrome. YouTube, Facebook, Snapchat, ShareChat, Moj, Josh, X, Reddit y más.
+          In Chrome, Brave, Edge, Samsung, Firefox and more.	En Chrome, Brave, Edge, Samsung, Firefox y más.
+          Instagram Reels are blocked 🚫	Los Reels de Instagram están bloqueados
+          Installing… the app will restart in a few seconds.	Instalando… la app se reiniciará en unos segundos.
+          Installs with Play Protect on. Full app lock, schedules, limits and pause mode are here. Shorts/Reels block, website block, strict mode and notification hold are only in the Full version.	Se instala con Play Protect activado. Aquí tienes el bloqueo completo, horarios, límites y modo pausa. El bloqueo de Shorts/Reels, de sitios web, el modo estricto y la retención de notificaciones solo están en la versión Full.
+          Just waiting is easy to beat; a small task makes the pause real.	Esperar es fácil de superar; una pequeña tarea hace real la pausa.
+          Kabir	Kabir
+          Katha Upanishad · Swami Vivekananda	Katha Upanishad · Swami Vivekananda
+          Language	Idioma
+          Later	Más tarde
+          Lift yourself up by your own self.	Elévate a ti mismo por ti mismo.
+          Limits	Límites
+          Locked apps	Apps bloqueadas
+          Locked: 	Bloqueadas: 
+          Long-press the title to turn admin off.	Mantén pulsado el título para desactivar el modo admin.
+          Minutes (5 to 720)	Minutos (de 5 a 720)
+          Mode	Modo
+          Most used apps (today)	Apps más usadas (hoy)
+          Needed, or the lock may stop. Tap here.	Es necesario, o el bloqueo puede detenerse. Toca aquí.
+          Never mind	No importa
+          New PIN (4 to 8 digits)	Nuevo PIN (de 4 a 8 dígitos)
+          New update: v	Nueva actualización: v
+          Next emergency unlock in 	Próximo desbloqueo de emergencia en 
+          No	No
+          No UPI app found. UPI ID copied: 	No se encontró ninguna app de UPI. ID de UPI copiado: 
+          No apps chosen yet	Aún no has elegido apps
+          No data yet today.	Aún no hay datos hoy.
+          No limit	Sin límite
+          No lock right now	No hay bloqueo ahora
+          No new app downloads or installs during a lock (Play Store and Xiaomi/Vivo/Oppo/Samsung stores).	No se pueden descargar ni instalar apps nuevas durante un bloqueo (Play Store y tiendas de Xiaomi/Vivo/Oppo/Samsung).
+          No, keep focusing	No, sigo enfocado
+          None at all 👏	Ninguna
+          Note: YouTube/Instagram change their design often. Tell us if Shorts stop getting blocked.	Nota: YouTube e Instagram cambian su diseño a menudo. Avísanos si los Shorts dejan de bloquearse.
+          Nothing	Nada
+          Nothing can unlock it before the time is up.	Nada puede desbloquearlo antes de que acabe el tiempo.
+          Now you decide	Ahora decides tú
+          OK	Aceptar
+          OPPO / Realme / OnePlus	OPPO / Realme / OnePlus
+          Off ❌	Desactivado
+          On ✅	Activado
+          One focused hour today is one step ahead tomorrow.	Una hora de enfoque hoy es un paso adelante mañana.
+          One page of a book beats a hundred reels.	Una página de un libro vale más que cien reels.
+          One task, full attention.	Una tarea, toda la atención.
+          Only a parent can change settings with the PIN.	Solo un padre o madre puede cambiar los ajustes con el PIN.
+          Only during focus/schedule	Solo durante el enfoque o el horario
+          Only for real emergencies. Once a week, with a 10-minute wait after asking.	Solo para emergencias reales. Una vez por semana, con 10 minutos de espera tras pedirlo.
+          Open	Abrir
+          Open Palrakh to update.\n	Abre Palrakh para actualizar.\n
+          Open UPI app	Abrir app de UPI
+          Open anyway (	Abrir igualmente (
+          Open app settings	Abrir ajustes de la app
+          Opening 	Abriendo 
+          Opening payment page…	Abriendo la página de pago…
+          Or pay ₹	O paga ₹
+          Others' lives are on the screen. Yours is right in front of you.	En la pantalla está la vida de otros. La tuya está justo delante de ti.
+          PIN must be 4 to 8 digits	El PIN debe tener de 4 a 8 dígitos
+          PIN removed	PIN eliminado
+          PINs don't match	Los PIN no coinciden
+          Paid but Pro didn't turn on?	¿Pagaste pero Pro no se activó?
+          Palrakh	Palrakh
+          Palrakh 	Palrakh 
+          Palrakh Pro 	Palrakh Pro 
+          Palrakh update failed	No se pudo actualizar Palrakh
+          Palrakh update is ready	La actualización de Palrakh está lista
+          Palrakh updated to v	Palrakh actualizado a v
+          Palrakh v	Palrakh v
+          Palrakh will now update to the new version.	Palrakh se actualizará ahora a la nueva versión.
+          Parent mode on  	Modo padres activado  
+          Pause mode on	Modo pausa activado
+          Pause. Do you really need it now?	Pausa. ¿De verdad lo necesitas ahora?
+          Pay on Razorpay by UPI, card or net banking. Pro turns on by itself as soon as you pay.	Paga en Razorpay con UPI, tarjeta o banca en línea. Pro se activa solo en cuanto pagas.
+          Payment is handled securely by Razorpay. The app only sends your phone ID, no personal data.	Razorpay gestiona el pago de forma segura. La app solo envía el ID de tu teléfono, ningún dato personal.
+          Payment received. Pro is on for 	Pago recibido. Pro está activo durante 
+          Phone ID has 8 characters	El ID del teléfono tiene 8 caracteres
+          Phone ID: 	ID del teléfono: 
+          Pick a plan and pay	Elige un plan y paga
+          Pick at least one app	Elige al menos una app
+          Pick at least one day	Elige al menos un día
+          Pro is on	Pro está activo
+          Protection can't be turned off during a lock 🔒	La protección no se puede desactivar durante un bloqueo
+          Protection off	Protección desactivada
+          Razorpay page	Página de Razorpay
+          Reel	Reel
+          Reels	Reels
+          Remove PIN	Quitar PIN
+          Repeat PIN	Repite el PIN
+          Request emergency unlock	Pedir desbloqueo de emergencia
+          Run in background	Seguir en segundo plano
+          Samsung	Samsung
+          Scan from another phone, or save it to your gallery and use "scan from gallery" in your UPI app.	Escanéalo desde otro teléfono, o guárdalo en tu galería y usa "escanear desde galería" en tu app de UPI.
+          Schedule	Horario
+          Schedule is on	El horario está activo
+          Schedule turned off	Horario desactivado
+          Screen time today	Tiempo de pantalla hoy
+          Send	Enviar
+          Send the payment screenshot and this phone ID on WhatsApp.	Envía la captura del pago y este ID del teléfono por WhatsApp.
+          Set PIN	Poner PIN
+          Set a parent PIN first	Primero pon un PIN de padres
+          Settings	Ajustes
+          Settings → Apps → Palrakh → top ⋮ → "Allow restricted settings", then try again.	Ajustes → Apps → Palrakh → ⋮ arriba → "Permitir ajustes restringidos", y vuelve a intentarlo.
+          Shorts, websites and strict mode will work.	Funcionarán los Shorts, los sitios web y el modo estricto.
+          Slowly, O mind, everything happens in its time.\nThe gardener may pour a hundred pots, but fruit comes only in its season.	Despacio, oh mente, todo llega a su tiempo.\nEl jardinero puede verter cien cántaros, pero el fruto solo llega en su estación.
+          Small focus, big results.	Pequeño enfoque, grandes resultados.
+          Small improvements	Pequeñas mejoras
+          So Palrakh can't be removed during a lock.	Así Palrakh no se puede quitar durante un bloqueo.
+          So Palrakh can't be removed during a lock. It reads no data.	Así Palrakh no se puede quitar durante un bloqueo. No lee ningún dato.
+          Start	Empezar
+          Start and end must differ	El inicio y el final deben ser distintos
+          Start for sure?	¿Seguro que quieres empezar?
+          Start without it	Empezar sin ella
+          Starting download…	Iniciando la descarga…
+          Stats	Estadísticas
+          Streak	Racha
+          Strict mode: this setting is locked right now 🔒	Modo estricto: este ajuste está bloqueado ahora
+          Take a screenshot to save it on this phone	Haz una captura para guardarlo en este teléfono
+          Tap for another thought	Toca para otro pensamiento
+          Tap here to install	Toca aquí para instalar
+          Tap here → Installed/Downloaded apps → "Palrakh – Shorts/Reels block" → ON	Toca aquí → Apps instaladas/descargadas → "Palrakh – Shorts/Reels block" → ACTIVADO
+          The app works, only Shorts/Reels are blocked (in app and browser).	La app funciona; solo se bloquean los Shorts/Reels (en la app y en el navegador).
+          The new version is ready	La nueva versión está lista
+          The next emergency unlock is available in 7 days.	El próximo desbloqueo de emergencia estará disponible en 7 días.
+          The reels never end. Your time does.	Los reels nunca terminan. Tu tiempo sí.
+          This app	Esta app
+          This code has expired	Este código ha caducado
+          This lock won't open before time is up.	Este bloqueo no se abrirá antes de tiempo.
+          This stops Palrakh from being removed without permission. It reads no data.	Esto impide que Palrakh se quite sin permiso. No lee ningún dato.
+          This stops the phone from killing the lock. Do it when no lock is running.	Esto evita que el teléfono cierre el bloqueo. Hazlo cuando no haya ningún bloqueo activo.
+          Those who searched, found, by diving into deep water.	Quien buscó, encontró, buceando en aguas profundas.
+          Time saved is real earnings.	El tiempo ahorrado es la verdadera ganancia.
+          Tired eyes? Look far out of the window for 20 seconds.	¿Ojos cansados? Mira a lo lejos por la ventana durante 20 segundos.
+          Today is #	Hoy es el n.º
+          Today you paused and closed 	Hoy has pausado y cerrado 
+          Today's study is tomorrow's income.	El estudio de hoy es el ingreso de mañana.
+          Today, talk face to face with someone you love instead of over the phone.	Hoy, habla cara a cara con alguien a quien quieres en lugar de por teléfono.
+          Today: 	Hoy: 
+          Today: closed 	Hoy: cerradas 
+          Try 3 days for just ₹1. Then ₹99 a month or ₹999 a year.	Prueba 3 días por solo ₹1. Después ₹99 al mes o ₹999 al año.
+          Try again	Intentar de nuevo
+          Tulsidas, Ramcharitmanas	Tulsidas, Ramcharitmanas
+          Turn off protection	Desactivar protección
+          Turn on "Allow display over other apps"	Activa "Permitir mostrar sobre otras apps"
+          Turn on "Palrakh" in the list	Activa "Palrakh" en la lista
+          Turn on "Uninstall protection" in the 🛡️ Block tab so the app can't be uninstalled during a lock. Tap here.	Activa la "Protección contra desinstalación" en la pestaña Bloqueo para que la app no se pueda desinstalar durante un bloqueo. Toca aquí.
+          Turn on the block service, strict mode and "Uninstall protection" in the 🛡️ Block tab. Tap here.	Activa el servicio de bloqueo, el modo estricto y la "Protección contra desinstalación" en la pestaña Bloqueo. Toca aquí.
+          Turning this off lets Palrakh be removed.	Si la desactivas, Palrakh se podrá quitar.
+          Type it here	Escríbelo aquí
+          UPI ID: 	ID de UPI: 
+          Update failed, will try again later. 	No se pudo actualizar, se volverá a intentar más tarde. 
+          Vivo / iQOO	Vivo / iQOO
+          Wait over. You may end the focus now (it won't count toward your streak).	Espera terminada. Ya puedes terminar el enfoque (no contará para tu racha).
+          Watching limits and schedule	Vigilando límites y horario
+          Water fills drop by drop. Knowledge grows moment by moment.	El agua llena gota a gota. El saber crece momento a momento.
+          Website block on	Bloqueo de sitios web activado
+          What you get with Pro	Lo que obtienes con Pro
+          What you sow today is what you harvest tomorrow.	Lo que siembras hoy es lo que cosechas mañana.
+          What's new:	Novedades:
+          What's new:\n\n	Novedades:\n\n
+          When on, the app can't be uninstalled directly. Trying to turn it off during a lock sends the phone home and locks the screen. It can't be turned off during a lock.	Cuando está activa, la app no se puede desinstalar directamente. Intentar desactivarla durante un bloqueo lleva el teléfono al inicio y bloquea la pantalla. No se puede desactivar durante un bloqueo.
+          When the limit is reached, the app stays locked until midnight.	Al alcanzar el límite, la app queda bloqueada hasta medianoche.
+          Which apps to lock?	¿Qué apps bloquear?
+          Which days?	¿Qué días?
+          Will try again later. 	Se volverá a intentar más tarde. 
+          Win over your mind and the phone loses on its own.	Gana a tu mente y el móvil perderá solo.
+          Without it, someone could uninstall the app to break the lock. You only need to turn it on once.	Sin ella, alguien podría desinstalar la app para romper el bloqueo. Solo tienes que activarla una vez.
+          Write your phone ID (below) in the note.	Escribe el ID de tu teléfono (abajo) en la nota.
+          Wrong	Incorrecto
+          Wrong PIN	PIN incorrecto
+          Xiaomi / Redmi / POCO	Xiaomi / Redmi / POCO
+          Yes	Sí
+          Yes, start	Sí, empezar
+          Yes, turn on	Sí, activar
+          Yes, unlock	Sí, desbloquear
+          You can do more than you think. Just focus.	Puedes hacer más de lo que crees. Solo enfócate.
+          You have a right to your work alone, never to its fruits.	Tienes derecho solo a tu trabajo, nunca a sus frutos.
+          You made this promise to yourself. Keep it.	Te hiciste esta promesa a ti mismo. Cúmplela.
+          You're on the Free plan	Estás en el plan Gratis
+          YouTube Shorts are blocked 🚫	Los Shorts de YouTube están bloqueados
+          Your Palrakh Pro code: 	Tu código de Palrakh Pro: 
+          Your best days	Tus mejores días
+          Your best weeks	Tus mejores semanas
+          Your focus, your rules	Tu enfoque, tus reglas
+          Your phone is a tool, not your master.	Tu móvil es una herramienta, no tu amo.
+          left	restantes
+          not even by changing the phone time or restarting.	ni cambiando la hora del teléfono ni reiniciándolo.
+          until 	hasta 
+          ⏳ Daily limit for each app	Límite diario para cada app
+          ⏳ Daily limit: 	Límite diario: 
+          ⏳ Daily limits	Límites diarios
+          ⏳ You can unlock in 	Puedes desbloquear en 
+          ⏸️ Pause mode	Modo pausa
+          ⏸️ Pause mode + math unlock	Modo pausa + desbloqueo con cálculo
+          ⏸️ Pause mode + ➗ math unlock	Modo pausa + desbloqueo con cálculo
+          ⏹️ End focus	Terminar enfoque
+          ▶️ YouTube Shorts	YouTube Shorts
+          ☀️ Light	Claro
+          ⚠️ If you see "Restricted setting"	Si ves "Ajuste restringido"
+          ⚠️ Lock is not fully strict yet	El bloqueo aún no es totalmente estricto
+          ⚠️ Turn it on once more (for the new protection). Tap here.	Actívalo una vez más (para la nueva protección). Toca aquí.
+          ⚠️ Won't work without the permission	No funcionará sin el permiso
+          ⚡ Remove battery restriction	Quitar la restricción de batería
+          ✅ Activate Pro	Activar Pro
+          ✅ Block service is ON	El servicio de bloqueo está ACTIVADO
+          ✅ On. PIN will be asked after 10 min or on "Lock now"	Activado. El PIN se pedirá tras 10 min o al pulsar "Bloquear ahora"
+          ✅ PIN set	PIN establecido
+          ✅ Pro is on · until 	Pro está activo · hasta 
+          ✅ Pro on for your phone	Pro activado en tu teléfono
+          ✅ Saved to gallery (Pictures/Palrakh)	Guardado en la galería (Pictures/Palrakh)
+          ✅ Schedule saved and on	Horario guardado y activo
+          ✅ UPI ID copied	ID de UPI copiado
+          ✋  Close the app	Cerrar la app
+          ✍️ Type a line	Escribir una frase
+          ✍️ Type this sentence exactly	Escribe esta frase exactamente
+          ✏️ Custom	Personalizado
+          ❌ Block service is OFF	El servicio de bloqueo está DESACTIVADO
+          ❌ Not right, wait 10 seconds again	No es correcto, espera otros 10 segundos
+          ❌ Wrong code (or for another phone)	Código incorrecto (o de otro teléfono)
+          ➗ Math	Cálculo
+          ➗ Solve this first	Resuelve esto primero
+          ⭐ Palrakh Pro	Palrakh Pro
+          ⭐ Pro feature	Función Pro
+          ⭐ See Pro	Ver Pro
+          🆘 Emergency unlock	Desbloqueo de emergencia
+          🌅 Sunset	Atardecer
+          🌊 Ocean	Océano
+          🌌 Indigo	Índigo
+          🌐 Block any websites you choose	Bloquea los sitios web que elijas
+          🌐 Lock the website of locked apps	Bloquear el sitio web de las apps bloqueadas
+          🌐 Website block	Bloqueo de sitios web
+          🌗 Auto	Automático
+          🌙 Dark	Oscuro
+          🌱 Try: 3 days	Prueba: 3 días
+          🌿 Forest	Bosque
+          🍅 25 = Pomodoro (25 min deep work)	25 = Pomodoro (25 min de trabajo profundo)
+          🍅 25 min focus	Enfoque de 25 min
+          🎉 Pro is on!	¡Pro está activo!
+          🎉 Well done! Focus complete	¡Bien hecho! Enfoque completado
+          🎖️ Badges (	Insignias (
+          🎨 Appearance	Apariencia
+          🏆 1 year (save ₹189)	1 año (ahorra ₹189)
+          🏆 Beat your best + 🎖️ Badges	Supera tu récord + insignias
+          🏆 Beat your best + 🎖️ badges	Supera tu récord + insignias
+          🏆 Beat your own best	Supera tu propio récord
+          🏠  Go to Home	Ir al inicio
+          👋 Welcome!	¡Bienvenido!
+          👍 Great! Focus continues	¡Genial! El enfoque continúa
+          👨‍👩‍👧 Family	Familia
+          👨‍👩‍👧 Open as parent (10 min)	Abrir como padre/madre (10 min)
+          👨‍👩‍👧 Parent mode	Modo padres
+          👨‍👩‍👧 Parent mode (for kids' phones)	Modo padres (para móviles de niños)
+          👨‍👩‍👧 Parent mode is on	El modo padres está activado
+          💡 Thought for today	Pensamiento del día
+          💬 Open WhatsApp	Abrir WhatsApp
+          💬 Send on WhatsApp	Enviar por WhatsApp
+          💬 Send to customer	Enviar al cliente
+          💾  Save: 	Guardar: 
+          📅 1 month	1 mes
+          📅 3 schedule profiles (sleep, family)	3 perfiles de horario (sueño, familia)
+          📅 Daily schedule	Horario diario
+          📅 Schedule: 	Horario: 
+          📈 Last 7 days	Últimos 7 días
+          📋 Copied	Copiado
+          📋 Copy	Copiar
+          📋 Copy ID	Copiar ID
+          📘 Facebook Reels (beta)	Reels de Facebook (beta)
+          📚 Work / Study	Trabajo / Estudio
+          📱 Battery settings for your phone (	Ajustes de batería para tu teléfono (
+          📷 Pay by QR	Pagar con QR
+          📸 Instagram Reels	Reels de Instagram
+          🔐 Security	Seguridad
+          🔑  Open for parent	Abrir para padre/madre
+          🔑 Enter PIN	Introduce el PIN
+          🔑 PIN (optional)	PIN (opcional)
+          🔑 PIN is set	El PIN está establecido
+          🔑 Set PIN	Poner PIN
+          🔒  Start focus	Empezar enfoque
+          🔒 A lock is running (	Hay un bloqueo activo (
+          🔒 A schedule lock is running. Don't turn this off now.	Hay un bloqueo de horario activo. No lo desactives ahora.
+          🔒 Focus session running	Sesión de enfoque en curso
+          🔒 Focus started	Enfoque iniciado
+          🔒 Focus/schedule running: you can only add or reduce limits now.	Enfoque u horario en curso: ahora solo puedes añadir o reducir límites.
+          🔒 Focus: 	Enfoque: 
+          🔒 Lock now	Bloquear ahora
+          🔒 Locked until 	Bloqueado hasta 
+          🔒 Palrakh	Palrakh
+          🔒 Play Store and new installs are locked right now	Play Store e instalaciones nuevas están bloqueadas ahora
+          🔓 Unlock now	Desbloquear ahora
+          🔓 Unlocked	Desbloqueado
+          🔕 Hold notifications	Retener notificaciones
+          🔕 Hold notifications during a lock	Retener notificaciones durante un bloqueo
+          🔕 Hold notifications, ⏸️ Pause mode, 🌐 Website block	Retener notificaciones, modo pausa, bloqueo de sitios web
+          🔗 Make the lock tighter	Hacer el bloqueo más estricto
+          🖼️ Save to gallery	Guardar en la galería
+          😴 Sleep	Sueño
+          🚫 Shorts & Reels	Shorts y Reels
+          🚫 Tries to open locked apps today	Intentos de abrir apps bloqueadas hoy
+          🛒 Lock Play Store during a lock	Bloquear Play Store durante un bloqueo
+          🛠️ Make a code (admin only)	Crear un código (solo admin)
+          🛡️ Strict lock is ON	El bloqueo estricto está ACTIVADO
+          🛡️ Strict mode	Modo estricto
+          🛡️ Turn on protection	Activar protección
+          🛡️ Turn on uninstall protection first?	¿Activar primero la protección contra desinstalación?
+          🛡️ Uninstall protection	Protección contra desinstalación
+          🟢 running now  ● on	activo ahora  ● activado
+          🪔 Diya	Diya
+          🪶 This is the Lite version	Esta es la versión Lite
+          hr	h
+          min	min
+          hour	hora
+          hours	horas
+          ENDOFFILE
+          mkdir -p FocusLock/app/src/main/assets/i18n
+          cat > FocusLock/app/src/main/assets/i18n/id.tsv <<'ENDOFFILE'
+          \nEnter it in the app under ⭐ → 3️⃣.	\nMasukkan di aplikasi pada menu Pro.
+          \nOpen the apps to see them.	\nBuka aplikasinya untuk melihatnya.
+          \nOpens again tomorrow	\nTerbuka lagi besok
+          \nYou can edit it after it ends.	\nKamu bisa mengubahnya setelah selesai.
+           (today)	 (hari ini)
+           (until 	 (sampai 
+           + less phone 	 + lebih sedikit ponsel 
+           + streak 	 + rangkaian 
+           apps locked	 aplikasi dikunci
+           apps will be locked for 	 aplikasi akan dikunci selama 
+           apps: 	 aplikasi: 
+           days	 hari
+           days)	 hari)
+           days.	 hari.
+           days. Thank you!	 hari. Terima kasih!
+           for Palrakh Pro. Phone ID: 	 untuk Palrakh Pro. ID ponsel: 
+           is available	 tersedia
+           is blocked	 diblokir
+           is locked now	 sedang dikunci
+           is locked too (the app is locked)	 juga dikunci (aplikasinya dikunci)
+           is on	 aktif
+           is running now	 sedang berjalan
+           left	 tersisa
+           left). Don't turn this off now.	 tersisa). Jangan matikan sekarang.
+           min)	 mnt)
+           notifications held during the lock	 notifikasi ditahan selama kunci
+           of focus done. All apps are open again.	 fokus selesai. Semua aplikasi terbuka lagi.
+           of your 	 dari 
+           on  	 aktif  
+           on WhatsApp to get your code.	 lewat WhatsApp untuk mendapatkan kodemu.
+           on the Razorpay page and send phone ID 	 di halaman Razorpay dan kirim ID ponsel 
+           on until 	 aktif sampai 
+           points today	 poin hari ini
+           profile	 profil
+           pts	 poin
+           times	 kali
+           times after pausing · opened 	 kali setelah jeda · dibuka 
+           times 👏	 kali
+           · Locked: 	 · Dikunci: 
+           · best 	 · terbaik 
+           · until 	 · sampai 
+           – how long per day?	 – berapa lama per hari?
+          "Just 5 minutes" becomes an hour. Stop here.	"Cuma 5 menit" jadi satu jam. Berhenti di sini.
+          ).\n\nThis lock cannot be opened early, 	).\n\nKunci ini tidak bisa dibuka lebih awal, 
+          + Add website	+ Tambah situs web
+          + Limit	+ Batas
+          -day streak	-hari beruntun
+          1 month	1 bulan
+          1 year	1 tahun
+          1. Open your UPI app (GPay / PhonePe / Paytm)\n	1. Buka aplikasi UPI kamu (GPay / PhonePe / Paytm)\n
+          1. Settings → Apps → Palrakh → Autostart ON\n2. Battery saver → No restrictions\n3. In Recent apps, pull Palrakh down and tap 🔒	1. Setelan → Aplikasi → Palrakh → Mulai otomatis AKTIF\n2. Penghemat baterai → Tanpa batasan\n3. Di Aplikasi terbaru, tarik Palrakh ke bawah dan ketuk gembok
+          1. Settings → Apps → Palrakh → Battery usage\n2. Turn on Allow background activity + Allow auto launch\n3. Lock the app 🔒 in Recent apps	1. Setelan → Aplikasi → Palrakh → Penggunaan baterai\n2. Aktifkan Izinkan aktivitas latar belakang + Izinkan peluncuran otomatis\n3. Kunci aplikasi di Aplikasi terbaru
+          1. Settings → Apps → Palrakh → Battery → Unrestricted\n2. If there is an Autostart option, turn it on	1. Setelan → Aplikasi → Palrakh → Baterai → Tidak dibatasi\n2. Jika ada opsi Mulai otomatis, aktifkan
+          1. Settings → Battery → Background power consumption → Palrakh → Allow\n2. i Manager → App manager → Autostart → Palrakh ON\n3. Keep Ultra power saving off	1. Setelan → Baterai → Konsumsi daya latar belakang → Palrakh → Izinkan\n2. i Manager → Pengelola aplikasi → Mulai otomatis → Palrakh AKTIF\n3. Matikan penghemat daya ultra
+          1. Settings → Battery → Background usage limits → add Palrakh to Never sleeping apps\n2. App info → Battery → Unrestricted	1. Setelan → Baterai → Batas penggunaan latar belakang → tambahkan Palrakh ke Aplikasi yang tidak pernah tidur\n2. Info aplikasi → Baterai → Tidak dibatasi
+          1. Usage access	1. Akses penggunaan
+          10 hours of focus	10 jam fokus
+          2. Choose "Pay to UPI ID" and paste the copied ID:\n    	2. Pilih "Bayar ke ID UPI" dan tempel ID yang disalin:\n    
+          2. Display over other apps	2. Tampilkan di atas aplikasi lain
+          3 days	3 hari
+          3 separate profiles: each with its own time, days and apps.	3 profil terpisah: masing-masing dengan waktu, hari, dan aplikasinya sendiri.
+          3-day streak	3 hari beruntun
+          3. Amount: ₹	3. Jumlah: ₹
+          30-day streak	30 hari beruntun
+          4. In the note / message write: 	4. Di catatan / pesan tulis: 
+          5. Send the screenshot on WhatsApp to get your code.	5. Kirim tangkapan layar lewat WhatsApp untuk mendapatkan kodemu.
+          50 hours of focus	50 jam fokus
+          7-day streak	7 hari beruntun
+          : today's limit reached	: batas hari ini tercapai
+          A 100-point day	Hari 100 poin
+          A 300-point day	Hari 300 poin
+          A day under 2 hours	Hari di bawah 2 jam
+          A little discomfort today, a big comfort tomorrow.	Sedikit tidak nyaman hari ini, kenyamanan besar besok.
+          A promise to yourself is the biggest promise.	Janji pada diri sendiri adalah janji terbesar.
+          Add website	Tambah situs web
+          After "Open anyway", allow for	Setelah "Tetap buka", izinkan selama
+          All apps will open. It won't count toward the streak.	Semua aplikasi akan terbuka. Ini tidak dihitung dalam rangkaian.
+          Allow	Izinkan
+          Allow first: tap here → "Palrakh – Notification hold" → ON	Izinkan dulu: ketuk di sini → "Palrakh – Notification hold" → AKTIF
+          Allow once: turn on "Allow" for Palrakh on the next screen, then come back.	Izinkan sekali: aktifkan "Izinkan" untuk Palrakh di layar berikutnya, lalu kembali.
+          Also keep 🛡️ "Uninstall protection" on (above).	Biarkan juga "Perlindungan uninstall" tetap aktif (di atas).
+          Also turn on the block service	Aktifkan juga layanan blokir
+          Android	Android
+          Answer	Jawaban
+          Any loosening (removing limits, turning off blocks) needs the PIN.	Setiap pelonggaran (menghapus batas, mematikan blokir) memerlukan PIN.
+          App updates	Pembaruan aplikasi
+          Appearance	Tampilan
+          Apps for pause mode	Aplikasi untuk mode jeda
+          Apps stay locked meanwhile. Cancel if it is not really urgent.	Aplikasi tetap terkunci sementara itu. Batalkan jika tidak benar-benar mendesak.
+          Arise, awake, and stop not till the goal is reached.	Bangkit, sadarlah, dan jangan berhenti sampai tujuan tercapai.
+          Ask a trusted person to set it. Then loosening needs them.	Minta orang tepercaya untuk mengaturnya. Dengan begitu, pelonggaran memerlukan dia.
+          Attention is your real power.	Perhatian adalah kekuatanmu yang sebenarnya.
+          Before "Open anyway", you must	Sebelum "Tetap buka", kamu harus
+          Bhagavad Gita 2.47	Bhagavad Gita 2.47
+          Bhagavad Gita 6.5	Bhagavad Gita 6.5
+          Bhagavad Gita 6.6 (meaning)	Bhagavad Gita 6.6 (makna)
+          Block	Blokir
+          Boredom isn't bad. New ideas grow in it.	Bosan itu tidak buruk. Ide baru tumbuh di dalamnya.
+          Breathe in…	Tarik napas…
+          Breathe out…	Buang napas…
+          Can't change this during a lock	Tidak bisa diubah selama kunci
+          Can't raise or remove limits during a lock	Tidak bisa menaikkan atau menghapus batas selama kunci
+          Can't remove PIN during a lock	Tidak bisa menghapus PIN selama kunci
+          Can't remove during a lock	Tidak bisa dihapus selama kunci
+          Cancel	Batal
+          Cancel request	Batalkan permintaan
+          Change PIN	Ganti PIN
+          Change the app colour and light/dark mode	Ubah warna aplikasi dan mode terang/gelap
+          Change theme	Ganti tema
+          Children learn what they see you do.	Anak-anak belajar dari apa yang mereka lihat kamu lakukan.
+          Choose UPI app	Pilih aplikasi UPI
+          Choose apps	Pilih aplikasi
+          Chosen apps show a 10-second breathing screen first, then you decide. Research shows such short pauses cut mindless opening a lot.	Aplikasi yang dipilih menampilkan layar napas 10 detik dulu, lalu kamu yang memutuskan. Penelitian menunjukkan jeda singkat seperti ini sangat mengurangi kebiasaan membuka tanpa sadar.
+          Close	Tutup
+          Colour	Warna
+          Copy ID and pay myself	Salin ID dan bayar sendiri
+          Could not open settings	Tidak bisa membuka setelan
+          Couldn't open WhatsApp	Tidak bisa membuka WhatsApp
+          Couldn't open the browser	Tidak bisa membuka browser
+          Couldn't open the payment page. Turn on the internet and try again.\n\n	Tidak bisa membuka halaman pembayaran. Nyalakan internet dan coba lagi.\n\n
+          Couldn't save, take a screenshot	Tidak bisa menyimpan, ambil tangkapan layar
+          Crops ripen with patience. So do goals.	Panen matang dengan kesabaran. Begitu juga tujuan.
+          Customer phone ID	ID ponsel pelanggan
+          Daily average: 	Rata-rata harian: 
+          Do one focus today	Lakukan satu fokus hari ini
+          Do today's work today. Scrolling can wait.	Kerjakan tugas hari ini hari ini. Scroll bisa menunggu.
+          Do tomorrow's work today, and today's work now.\nWho knows what the next moment brings; when will you do it then?	Kerjakan tugas besok hari ini, dan tugas hari ini sekarang.\nSiapa tahu apa yang dibawa saat berikutnya; kapan lagi kamu akan mengerjakannya?
+          Downloaded file is not valid	File yang diunduh tidak valid
+          Downloading… 	Mengunduh… 
+          Dreams first, phone later.	Mimpi dulu, ponsel nanti.
+          During a lock, notifications from locked apps are hidden. When it ends, one notification tells you how many came. Calls and other apps are not affected.	Selama kunci, notifikasi dari aplikasi yang dikunci disembunyikan. Saat selesai, satu notifikasi memberi tahu berapa banyak yang masuk. Panggilan dan aplikasi lain tidak terpengaruh.
+          During focus/schedule, Force stop, Uninstall or turning off permissions is blocked.	Selama fokus/jadwal, Paksa berhenti, Uninstall, atau mematikan izin diblokir.
+          End	Selesai
+          End the focus now?	Akhiri fokus sekarang?
+          End the focus?	Akhiri fokus?
+          Enter a valid site like example.com	Masukkan situs yang valid seperti example.com
+          Enter between 5 and 720	Masukkan antara 5 dan 720
+          Even a field turns green only with daily work.	Bahkan sawah hanya menghijau dengan kerja setiap hari.
+          Every 'no' here is a 'yes' to something bigger.	Setiap "tidak" di sini adalah "ya" untuk sesuatu yang lebih besar.
+          Every moment with family is worth more than any reel.	Setiap momen bersama keluarga lebih berharga dari reel mana pun.
+          Every time you pause, your mind grows a little stronger.	Setiap kali kamu berhenti sejenak, pikiranmu sedikit lebih kuat.
+          Everything exists in this world, but one who makes no effort gains nothing.	Segalanya ada di dunia ini, tetapi yang tidak berusaha tidak mendapat apa-apa.
+          Exercise, a book or work: anything beats a reel.	Olahraga, buku, atau kerja: apa pun lebih baik dari reel.
+          Facebook Reels are blocked 🚫	Reels Facebook diblokir
+          Family, village, dreams: all are built with your time.	Keluarga, desa, mimpi: semua dibangun dengan waktumu.
+          Finish your first focus session and your days will show here.	Selesaikan sesi fokus pertamamu dan hari-harimu akan muncul di sini.
+          First focus	Fokus pertama
+          Focus	Fokus
+          Focus 	Fokus 
+          Focus complete	Fokus selesai
+          Focus session · until 	Sesi fokus · sampai 
+          Focus session: 	Sesi fokus: 
+          Focus today	Fokus hari ini
+          Focus today: 	Fokus hari ini: 
+          For a child's phone. When on, opening the app only shows the lock status. Changing settings, ending a lock or loosening rules needs your PIN. Stats show how often locked apps were tried.	Untuk ponsel anak. Saat aktif, membuka aplikasi hanya menampilkan status kunci. Mengubah setelan, mengakhiri kunci, atau melonggarkan aturan memerlukan PIN-mu. Statistik menunjukkan seberapa sering aplikasi yang dikunci dicoba.
+          For me	Untuk saya
+          For one who has conquered the mind, the mind is the best of friends.	Bagi yang telah menaklukkan pikirannya, pikiran adalah sahabat terbaik.
+          Free includes: focus lock, Shorts/Reels block, locked apps' websites, widget, 1 schedule.	Gratis termasuk: kunci fokus, blokir Shorts/Reels, situs web aplikasi yang dikunci, widget, 1 jadwal.
+          Free includes: focus lock, widget, 1 schedule.	Gratis termasuk: kunci fokus, widget, 1 jadwal.
+          Fresh start	Awal baru
+          Full sleep, sharp mind. Keep the phone away at night.	Tidur cukup, pikiran tajam. Jauhkan ponsel di malam hari.
+          Getting distracted isn't failure. Coming back is victory.	Terdistraksi bukan kegagalan. Kembali fokus adalah kemenangan.
+          Give these 2 permissions to start:	Berikan 2 izin ini untuk mulai:
+          Have a code? Enter it here	Punya kode? Masukkan di sini
+          Held notifications	Notifikasi yang ditahan
+          Hi, I've paid for Palrakh Pro. Phone ID: 	Halo, saya sudah membayar Palrakh Pro. ID ponsel: 
+          Hi, I've paid ₹	Halo, saya sudah membayar ₹
+          Hold notifications on	Tahan notifikasi aktif
+          How do you want to pay?\n\nIf the UPI app blocks the payment, pick the second way. It works in every UPI app.	Bagaimana kamu ingin membayar?\n\nJika aplikasi UPI memblokir pembayaran, pilih cara kedua. Cara itu bisa di semua aplikasi UPI.
+          How long?	Berapa lama?
+          How many minutes?	Berapa menit?
+          How points work: 1 point per focus minute. Half a point per minute below your 7-day average screen time. 5 points per streak day (max 150). All of it stays on your phone.	Cara kerja poin: 1 poin per menit fokus. Setengah poin per menit di bawah rata-rata waktu layar 7 harimu. 5 poin per hari beruntun (maks. 150). Semuanya tetap di ponselmu.
+          I am opening this app on purpose	Saya membuka aplikasi ini dengan sengaja
+          If Instagram is locked, instagram.com won't open in Chrome either. YouTube, Facebook, Snapchat, ShareChat, Moj, Josh, X, Reddit and more.	Jika Instagram dikunci, instagram.com juga tidak akan terbuka di Chrome. YouTube, Facebook, Snapchat, ShareChat, Moj, Josh, X, Reddit, dan lainnya.
+          In Chrome, Brave, Edge, Samsung, Firefox and more.	Di Chrome, Brave, Edge, Samsung, Firefox, dan lainnya.
+          Instagram Reels are blocked 🚫	Reels Instagram diblokir
+          Installing… the app will restart in a few seconds.	Menginstal… aplikasi akan dimulai ulang dalam beberapa detik.
+          Installs with Play Protect on. Full app lock, schedules, limits and pause mode are here. Shorts/Reels block, website block, strict mode and notification hold are only in the Full version.	Terpasang dengan Play Protect aktif. Kunci aplikasi penuh, jadwal, batas, dan mode jeda ada di sini. Blokir Shorts/Reels, blokir situs web, mode ketat, dan tahan notifikasi hanya ada di versi Full.
+          Just waiting is easy to beat; a small task makes the pause real.	Sekadar menunggu itu mudah dilewati; tugas kecil membuat jeda jadi nyata.
+          Kabir	Kabir
+          Katha Upanishad · Swami Vivekananda	Katha Upanishad · Swami Vivekananda
+          Language	Bahasa
+          Later	Nanti
+          Lift yourself up by your own self.	Angkatlah dirimu dengan dirimu sendiri.
+          Limits	Batas
+          Locked apps	Aplikasi dikunci
+          Locked: 	Dikunci: 
+          Long-press the title to turn admin off.	Tekan lama judul untuk mematikan admin.
+          Minutes (5 to 720)	Menit (5 sampai 720)
+          Mode	Mode
+          Most used apps (today)	Aplikasi paling sering dipakai (hari ini)
+          Needed, or the lock may stop. Tap here.	Diperlukan, atau kunci bisa berhenti. Ketuk di sini.
+          Never mind	Tidak jadi
+          New PIN (4 to 8 digits)	PIN baru (4 sampai 8 angka)
+          New update: v	Pembaruan baru: v
+          Next emergency unlock in 	Buka darurat berikutnya dalam 
+          No	Tidak
+          No UPI app found. UPI ID copied: 	Aplikasi UPI tidak ditemukan. ID UPI disalin: 
+          No apps chosen yet	Belum ada aplikasi yang dipilih
+          No data yet today.	Belum ada data hari ini.
+          No limit	Tanpa batas
+          No lock right now	Tidak ada kunci saat ini
+          No new app downloads or installs during a lock (Play Store and Xiaomi/Vivo/Oppo/Samsung stores).	Tidak bisa mengunduh atau menginstal aplikasi baru selama kunci (Play Store dan toko Xiaomi/Vivo/Oppo/Samsung).
+          No, keep focusing	Tidak, tetap fokus
+          None at all 👏	Tidak ada sama sekali
+          Note: YouTube/Instagram change their design often. Tell us if Shorts stop getting blocked.	Catatan: YouTube/Instagram sering mengubah desainnya. Beri tahu kami jika Shorts tidak lagi diblokir.
+          Nothing	Tidak ada
+          Nothing can unlock it before the time is up.	Tidak ada yang bisa membukanya sebelum waktunya habis.
+          Now you decide	Sekarang kamu yang memutuskan
+          OK	OK
+          OPPO / Realme / OnePlus	OPPO / Realme / OnePlus
+          Off ❌	Nonaktif
+          On ✅	Aktif
+          One focused hour today is one step ahead tomorrow.	Satu jam fokus hari ini adalah satu langkah maju besok.
+          One page of a book beats a hundred reels.	Satu halaman buku lebih baik dari seratus reel.
+          One task, full attention.	Satu tugas, perhatian penuh.
+          Only a parent can change settings with the PIN.	Hanya orang tua yang bisa mengubah setelan dengan PIN.
+          Only during focus/schedule	Hanya selama fokus/jadwal
+          Only for real emergencies. Once a week, with a 10-minute wait after asking.	Hanya untuk keadaan darurat sungguhan. Seminggu sekali, dengan tunggu 10 menit setelah meminta.
+          Open	Buka
+          Open Palrakh to update.\n	Buka Palrakh untuk memperbarui.\n
+          Open UPI app	Buka aplikasi UPI
+          Open anyway (	Tetap buka (
+          Open app settings	Buka setelan aplikasi
+          Opening 	Membuka 
+          Opening payment page…	Membuka halaman pembayaran…
+          Or pay ₹	Atau bayar ₹
+          Others' lives are on the screen. Yours is right in front of you.	Di layar ada hidup orang lain. Hidupmu ada tepat di depanmu.
+          PIN must be 4 to 8 digits	PIN harus 4 sampai 8 angka
+          PIN removed	PIN dihapus
+          PINs don't match	PIN tidak cocok
+          Paid but Pro didn't turn on?	Sudah bayar tapi Pro tidak aktif?
+          Palrakh	Palrakh
+          Palrakh 	Palrakh 
+          Palrakh Pro 	Palrakh Pro 
+          Palrakh update failed	Pembaruan Palrakh gagal
+          Palrakh update is ready	Pembaruan Palrakh siap
+          Palrakh updated to v	Palrakh diperbarui ke v
+          Palrakh v	Palrakh v
+          Palrakh will now update to the new version.	Palrakh akan diperbarui ke versi baru sekarang.
+          Parent mode on  	Mode orang tua aktif  
+          Pause mode on	Mode jeda aktif
+          Pause. Do you really need it now?	Jeda. Apakah kamu benar-benar membutuhkannya sekarang?
+          Pay on Razorpay by UPI, card or net banking. Pro turns on by itself as soon as you pay.	Bayar di Razorpay dengan UPI, kartu, atau net banking. Pro aktif sendiri begitu kamu membayar.
+          Payment is handled securely by Razorpay. The app only sends your phone ID, no personal data.	Pembayaran ditangani dengan aman oleh Razorpay. Aplikasi hanya mengirim ID ponselmu, tanpa data pribadi.
+          Payment received. Pro is on for 	Pembayaran diterima. Pro aktif selama 
+          Phone ID has 8 characters	ID ponsel terdiri dari 8 karakter
+          Phone ID: 	ID ponsel: 
+          Pick a plan and pay	Pilih paket dan bayar
+          Pick at least one app	Pilih setidaknya satu aplikasi
+          Pick at least one day	Pilih setidaknya satu hari
+          Pro is on	Pro aktif
+          Protection can't be turned off during a lock 🔒	Perlindungan tidak bisa dimatikan selama kunci
+          Protection off	Perlindungan nonaktif
+          Razorpay page	Halaman Razorpay
+          Reel	Reel
+          Reels	Reels
+          Remove PIN	Hapus PIN
+          Repeat PIN	Ulangi PIN
+          Request emergency unlock	Minta buka darurat
+          Run in background	Jalankan di latar belakang
+          Samsung	Samsung
+          Scan from another phone, or save it to your gallery and use "scan from gallery" in your UPI app.	Pindai dari ponsel lain, atau simpan ke galeri dan gunakan "pindai dari galeri" di aplikasi UPI-mu.
+          Schedule	Jadwal
+          Schedule is on	Jadwal aktif
+          Schedule turned off	Jadwal dimatikan
+          Screen time today	Waktu layar hari ini
+          Send	Kirim
+          Send the payment screenshot and this phone ID on WhatsApp.	Kirim tangkapan layar pembayaran dan ID ponsel ini lewat WhatsApp.
+          Set PIN	Atur PIN
+          Set a parent PIN first	Atur PIN orang tua dulu
+          Settings	Setelan
+          Settings → Apps → Palrakh → top ⋮ → "Allow restricted settings", then try again.	Setelan → Aplikasi → Palrakh → ⋮ di atas → "Izinkan setelan terbatas", lalu coba lagi.
+          Shorts, websites and strict mode will work.	Shorts, situs web, dan mode ketat akan berfungsi.
+          Slowly, O mind, everything happens in its time.\nThe gardener may pour a hundred pots, but fruit comes only in its season.	Pelan-pelan, wahai pikiran, semua terjadi pada waktunya.\nTukang kebun boleh menyiram seratus kendi, tapi buah hanya datang pada musimnya.
+          Small focus, big results.	Fokus kecil, hasil besar.
+          Small improvements	Perbaikan kecil
+          So Palrakh can't be removed during a lock.	Jadi Palrakh tidak bisa dihapus selama kunci.
+          So Palrakh can't be removed during a lock. It reads no data.	Jadi Palrakh tidak bisa dihapus selama kunci. Tidak membaca data apa pun.
+          Start	Mulai
+          Start and end must differ	Waktu mulai dan selesai harus berbeda
+          Start for sure?	Yakin ingin mulai?
+          Start without it	Mulai tanpanya
+          Starting download…	Memulai unduhan…
+          Stats	Statistik
+          Streak	Rangkaian
+          Strict mode: this setting is locked right now 🔒	Mode ketat: setelan ini sedang dikunci
+          Take a screenshot to save it on this phone	Ambil tangkapan layar untuk menyimpannya di ponsel ini
+          Tap for another thought	Ketuk untuk renungan lain
+          Tap here to install	Ketuk di sini untuk menginstal
+          Tap here → Installed/Downloaded apps → "Palrakh – Shorts/Reels block" → ON	Ketuk di sini → Aplikasi terinstal/diunduh → "Palrakh – Shorts/Reels block" → AKTIF
+          The app works, only Shorts/Reels are blocked (in app and browser).	Aplikasinya tetap berfungsi, hanya Shorts/Reels yang diblokir (di aplikasi dan browser).
+          The new version is ready	Versi baru sudah siap
+          The next emergency unlock is available in 7 days.	Buka darurat berikutnya tersedia dalam 7 hari.
+          The reels never end. Your time does.	Reels tidak pernah habis. Waktumu yang habis.
+          This app	Aplikasi ini
+          This code has expired	Kode ini sudah kedaluwarsa
+          This lock won't open before time is up.	Kunci ini tidak akan terbuka sebelum waktunya.
+          This stops Palrakh from being removed without permission. It reads no data.	Ini mencegah Palrakh dihapus tanpa izin. Tidak membaca data apa pun.
+          This stops the phone from killing the lock. Do it when no lock is running.	Ini mencegah ponsel mematikan kunci. Lakukan saat tidak ada kunci yang berjalan.
+          Those who searched, found, by diving into deep water.	Yang mencari, menemukan, dengan menyelam ke air yang dalam.
+          Time saved is real earnings.	Waktu yang dihemat adalah penghasilan sejati.
+          Tired eyes? Look far out of the window for 20 seconds.	Mata lelah? Lihat jauh ke luar jendela selama 20 detik.
+          Today is #	Hari ini adalah ke-
+          Today you paused and closed 	Hari ini kamu berhenti sejenak dan menutup 
+          Today's study is tomorrow's income.	Belajar hari ini adalah penghasilan besok.
+          Today, talk face to face with someone you love instead of over the phone.	Hari ini, bicaralah langsung dengan orang yang kamu sayangi, bukan lewat telepon.
+          Today: 	Hari ini: 
+          Today: closed 	Hari ini: ditutup 
+          Try 3 days for just ₹1. Then ₹99 a month or ₹999 a year.	Coba 3 hari hanya ₹1. Lalu ₹99 per bulan atau ₹999 per tahun.
+          Try again	Coba lagi
+          Tulsidas, Ramcharitmanas	Tulsidas, Ramcharitmanas
+          Turn off protection	Matikan perlindungan
+          Turn on "Allow display over other apps"	Aktifkan "Izinkan tampil di atas aplikasi lain"
+          Turn on "Palrakh" in the list	Aktifkan "Palrakh" di daftar
+          Turn on "Uninstall protection" in the 🛡️ Block tab so the app can't be uninstalled during a lock. Tap here.	Aktifkan "Perlindungan uninstall" di tab Blokir agar aplikasi tidak bisa di-uninstall selama kunci. Ketuk di sini.
+          Turn on the block service, strict mode and "Uninstall protection" in the 🛡️ Block tab. Tap here.	Aktifkan layanan blokir, mode ketat, dan "Perlindungan uninstall" di tab Blokir. Ketuk di sini.
+          Turning this off lets Palrakh be removed.	Jika dimatikan, Palrakh bisa dihapus.
+          Type it here	Ketik di sini
+          UPI ID: 	ID UPI: 
+          Update failed, will try again later. 	Pembaruan gagal, akan dicoba lagi nanti. 
+          Vivo / iQOO	Vivo / iQOO
+          Wait over. You may end the focus now (it won't count toward your streak).	Waktu tunggu selesai. Kamu boleh mengakhiri fokus sekarang (tidak dihitung dalam rangkaianmu).
+          Watching limits and schedule	Memantau batas dan jadwal
+          Water fills drop by drop. Knowledge grows moment by moment.	Air terisi tetes demi tetes. Ilmu tumbuh saat demi saat.
+          Website block on	Blokir situs web aktif
+          What you get with Pro	Yang kamu dapat dengan Pro
+          What you sow today is what you harvest tomorrow.	Apa yang kamu tanam hari ini, itulah yang kamu panen besok.
+          What's new:	Yang baru:
+          What's new:\n\n	Yang baru:\n\n
+          When on, the app can't be uninstalled directly. Trying to turn it off during a lock sends the phone home and locks the screen. It can't be turned off during a lock.	Saat aktif, aplikasi tidak bisa di-uninstall langsung. Mencoba mematikannya selama kunci akan membawa ponsel ke beranda dan mengunci layar. Tidak bisa dimatikan selama kunci.
+          When the limit is reached, the app stays locked until midnight.	Saat batas tercapai, aplikasi tetap terkunci sampai tengah malam.
+          Which apps to lock?	Aplikasi mana yang dikunci?
+          Which days?	Hari apa saja?
+          Will try again later. 	Akan dicoba lagi nanti. 
+          Win over your mind and the phone loses on its own.	Taklukkan pikiranmu dan ponsel akan kalah dengan sendirinya.
+          Without it, someone could uninstall the app to break the lock. You only need to turn it on once.	Tanpa ini, seseorang bisa meng-uninstall aplikasi untuk membobol kunci. Kamu hanya perlu mengaktifkannya sekali.
+          Write your phone ID (below) in the note.	Tulis ID ponselmu (di bawah) di catatan.
+          Wrong	Salah
+          Wrong PIN	PIN salah
+          Xiaomi / Redmi / POCO	Xiaomi / Redmi / POCO
+          Yes	Ya
+          Yes, start	Ya, mulai
+          Yes, turn on	Ya, aktifkan
+          Yes, unlock	Ya, buka kunci
+          You can do more than you think. Just focus.	Kamu bisa lebih dari yang kamu kira. Cukup fokus.
+          You have a right to your work alone, never to its fruits.	Hakmu hanya pada pekerjaanmu, tidak pada hasilnya.
+          You made this promise to yourself. Keep it.	Kamu sudah berjanji pada dirimu sendiri. Tepati.
+          You're on the Free plan	Kamu memakai paket Gratis
+          YouTube Shorts are blocked 🚫	YouTube Shorts diblokir
+          Your Palrakh Pro code: 	Kode Palrakh Pro kamu: 
+          Your best days	Hari-hari terbaikmu
+          Your best weeks	Minggu-minggu terbaikmu
+          Your focus, your rules	Fokusmu, aturanmu
+          Your phone is a tool, not your master.	Ponselmu adalah alat, bukan tuanmu.
+          left	tersisa
+          not even by changing the phone time or restarting.	bahkan tidak dengan mengubah jam ponsel atau memulai ulang.
+          until 	sampai 
+          ⏳ Daily limit for each app	Batas harian untuk setiap aplikasi
+          ⏳ Daily limit: 	Batas harian: 
+          ⏳ Daily limits	Batas harian
+          ⏳ You can unlock in 	Kamu bisa membuka kunci dalam 
+          ⏸️ Pause mode	Mode jeda
+          ⏸️ Pause mode + math unlock	Mode jeda + buka dengan hitungan
+          ⏸️ Pause mode + ➗ math unlock	Mode jeda + buka dengan hitungan
+          ⏹️ End focus	Akhiri fokus
+          ▶️ YouTube Shorts	YouTube Shorts
+          ☀️ Light	Terang
+          ⚠️ If you see "Restricted setting"	Jika muncul "Setelan terbatas"
+          ⚠️ Lock is not fully strict yet	Kunci belum sepenuhnya ketat
+          ⚠️ Turn it on once more (for the new protection). Tap here.	Aktifkan sekali lagi (untuk perlindungan baru). Ketuk di sini.
+          ⚠️ Won't work without the permission	Tidak akan berfungsi tanpa izin
+          ⚡ Remove battery restriction	Hapus batasan baterai
+          ✅ Activate Pro	Aktifkan Pro
+          ✅ Block service is ON	Layanan blokir AKTIF
+          ✅ On. PIN will be asked after 10 min or on "Lock now"	Aktif. PIN akan diminta setelah 10 menit atau saat "Kunci sekarang"
+          ✅ PIN set	PIN diatur
+          ✅ Pro is on · until 	Pro aktif · sampai 
+          ✅ Pro on for your phone	Pro aktif untuk ponselmu
+          ✅ Saved to gallery (Pictures/Palrakh)	Tersimpan di galeri (Pictures/Palrakh)
+          ✅ Schedule saved and on	Jadwal disimpan dan aktif
+          ✅ UPI ID copied	ID UPI disalin
+          ✋  Close the app	Tutup aplikasi
+          ✍️ Type a line	Ketik satu kalimat
+          ✍️ Type this sentence exactly	Ketik kalimat ini persis
+          ✏️ Custom	Kustom
+          ❌ Block service is OFF	Layanan blokir NONAKTIF
+          ❌ Not right, wait 10 seconds again	Belum benar, tunggu 10 detik lagi
+          ❌ Wrong code (or for another phone)	Kode salah (atau untuk ponsel lain)
+          ➗ Math	Hitungan
+          ➗ Solve this first	Selesaikan ini dulu
+          ⭐ Palrakh Pro	Palrakh Pro
+          ⭐ Pro feature	Fitur Pro
+          ⭐ See Pro	Lihat Pro
+          🆘 Emergency unlock	Buka darurat
+          🌅 Sunset	Senja
+          🌊 Ocean	Samudra
+          🌌 Indigo	Nila
+          🌐 Block any websites you choose	Blokir situs web pilihanmu
+          🌐 Lock the website of locked apps	Kunci situs web dari aplikasi yang dikunci
+          🌐 Website block	Blokir situs web
+          🌗 Auto	Otomatis
+          🌙 Dark	Gelap
+          🌱 Try: 3 days	Coba: 3 hari
+          🌿 Forest	Hutan
+          🍅 25 = Pomodoro (25 min deep work)	25 = Pomodoro (25 menit kerja mendalam)
+          🍅 25 min focus	Fokus 25 menit
+          🎉 Pro is on!	Pro aktif!
+          🎉 Well done! Focus complete	Hebat! Fokus selesai
+          🎖️ Badges (	Lencana (
+          🎨 Appearance	Tampilan
+          🏆 1 year (save ₹189)	1 tahun (hemat ₹189)
+          🏆 Beat your best + 🎖️ Badges	Kalahkan rekormu + lencana
+          🏆 Beat your best + 🎖️ badges	Kalahkan rekormu + lencana
+          🏆 Beat your own best	Kalahkan rekormu sendiri
+          🏠  Go to Home	Ke Beranda
+          👋 Welcome!	Selamat datang!
+          👍 Great! Focus continues	Bagus! Fokus berlanjut
+          👨‍👩‍👧 Family	Keluarga
+          👨‍👩‍👧 Open as parent (10 min)	Buka sebagai orang tua (10 mnt)
+          👨‍👩‍👧 Parent mode	Mode orang tua
+          👨‍👩‍👧 Parent mode (for kids' phones)	Mode orang tua (untuk ponsel anak)
+          👨‍👩‍👧 Parent mode is on	Mode orang tua aktif
+          💡 Thought for today	Renungan hari ini
+          💬 Open WhatsApp	Buka WhatsApp
+          💬 Send on WhatsApp	Kirim lewat WhatsApp
+          💬 Send to customer	Kirim ke pelanggan
+          💾  Save: 	Simpan: 
+          📅 1 month	1 bulan
+          📅 3 schedule profiles (sleep, family)	3 profil jadwal (tidur, keluarga)
+          📅 Daily schedule	Jadwal harian
+          📅 Schedule: 	Jadwal: 
+          📈 Last 7 days	7 hari terakhir
+          📋 Copied	Disalin
+          📋 Copy	Salin
+          📋 Copy ID	Salin ID
+          📘 Facebook Reels (beta)	Reels Facebook (beta)
+          📚 Work / Study	Kerja / Belajar
+          📱 Battery settings for your phone (	Setelan baterai untuk ponselmu (
+          📷 Pay by QR	Bayar dengan QR
+          📸 Instagram Reels	Reels Instagram
+          🔐 Security	Keamanan
+          🔑  Open for parent	Buka untuk orang tua
+          🔑 Enter PIN	Masukkan PIN
+          🔑 PIN (optional)	PIN (opsional)
+          🔑 PIN is set	PIN sudah diatur
+          🔑 Set PIN	Atur PIN
+          🔒  Start focus	Mulai fokus
+          🔒 A lock is running (	Kunci sedang berjalan (
+          🔒 A schedule lock is running. Don't turn this off now.	Kunci jadwal sedang berjalan. Jangan matikan sekarang.
+          🔒 Focus session running	Sesi fokus berjalan
+          🔒 Focus started	Fokus dimulai
+          🔒 Focus/schedule running: you can only add or reduce limits now.	Fokus/jadwal berjalan: sekarang kamu hanya bisa menambah atau mengurangi batas.
+          🔒 Focus: 	Fokus: 
+          🔒 Lock now	Kunci sekarang
+          🔒 Locked until 	Dikunci sampai 
+          🔒 Palrakh	Palrakh
+          🔒 Play Store and new installs are locked right now	Play Store dan instalasi baru sedang dikunci
+          🔓 Unlock now	Buka kunci sekarang
+          🔓 Unlocked	Kunci dibuka
+          🔕 Hold notifications	Tahan notifikasi
+          🔕 Hold notifications during a lock	Tahan notifikasi selama kunci
+          🔕 Hold notifications, ⏸️ Pause mode, 🌐 Website block	Tahan notifikasi, mode jeda, blokir situs web
+          🔗 Make the lock tighter	Buat kunci lebih ketat
+          🖼️ Save to gallery	Simpan ke galeri
+          😴 Sleep	Tidur
+          🚫 Shorts & Reels	Shorts & Reels
+          🚫 Tries to open locked apps today	Percobaan membuka aplikasi yang dikunci hari ini
+          🛒 Lock Play Store during a lock	Kunci Play Store selama kunci
+          🛠️ Make a code (admin only)	Buat kode (khusus admin)
+          🛡️ Strict lock is ON	Kunci ketat AKTIF
+          🛡️ Strict mode	Mode ketat
+          🛡️ Turn on protection	Aktifkan perlindungan
+          🛡️ Turn on uninstall protection first?	Aktifkan perlindungan uninstall dulu?
+          🛡️ Uninstall protection	Perlindungan uninstall
+          🟢 running now  ● on	sedang berjalan  ● aktif
+          🪔 Diya	Diya
+          🪶 This is the Lite version	Ini versi Lite
+          hr	jam
+          min	mnt
+          hour	jam
+          hours	jam
+          ENDOFFILE
           mkdir -p FocusLock/app/src/main/java/com/rakesh/focuslock
           cat > FocusLock/app/src/main/java/com/rakesh/focuslock/AdminReceiver.java <<'ENDOFFILE'
           package com.rakesh.focuslock;
@@ -275,8 +1735,8 @@ jobs:
                               : L.t(c, "🔒 शेड्यूल लॉक चल रहा है। अभी इसे बंद न करें।",
                               "🔒 A schedule lock is running. Don't turn this off now.");
                   }
-                  return L.t(c, "इसे बंद करने पर Lagaam हटाया जा सकेगा।",
-                          "Turning this off lets Lagaam be removed.");
+                  return L.t(c, "इसे बंद करने पर Palrakh हटाया जा सकेगा।",
+                          "Turning this off lets Palrakh be removed.");
               }
           }
           ENDOFFILE
@@ -482,6 +1942,8 @@ jobs:
                           LinearLayout.LayoutParams.MATCH_PARENT, dp(56)));
 
                   setContentView(root);
+
+                  getWindow().getDecorView().setLayoutDirection(L.rtl(this) ? android.view.View.LAYOUT_DIRECTION_RTL : android.view.View.LAYOUT_DIRECTION_LTR);
                   showFor(getIntent());
               }
 
@@ -735,7 +2197,7 @@ jobs:
 
               private Notification buildNotification(String text) {
                   NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-                  NotificationChannel ch = new NotificationChannel(CHANNEL, "Lagaam",
+                  NotificationChannel ch = new NotificationChannel(CHANNEL, "Palrakh",
                           NotificationManager.IMPORTANCE_LOW);
                   nm.createNotificationChannel(ch);
                   PendingIntent pi = PendingIntent.getActivity(this, 0,
@@ -743,7 +2205,7 @@ jobs:
                   lastNotifText = text;
                   return new Notification.Builder(this, CHANNEL)
                           .setSmallIcon(R.drawable.ic_lock_white)
-                          .setContentTitle(L.t(this, "🔒 Lagaam", "🔒 Lagaam"))
+                          .setContentTitle(L.t(this, "🔒 Palrakh", "🔒 Palrakh"))
                           .setContentText(text)
                           .setStyle(new Notification.BigTextStyle().bigText(text))
                           .setOngoing(true)
@@ -1001,7 +2463,7 @@ jobs:
                       lastKey = key;
 
                       RemoteViews v = new RemoteViews(c.getPackageName(), R.layout.widget_focus);
-                      v.setTextViewText(R.id.w_title, L.t(c, "🔒 Lagaam", "🔒 Lagaam"));
+                      v.setTextViewText(R.id.w_title, L.t(c, "🔒 Palrakh", "🔒 Palrakh"));
                       v.setTextViewText(R.id.w_status, status);
                       v.setTextViewText(R.id.w_btn, btn);
 
@@ -1180,6 +2642,101 @@ jobs:
           }
           ENDOFFILE
           mkdir -p FocusLock/app/src/main/java/com/rakesh/focuslock
+          cat > FocusLock/app/src/main/java/com/rakesh/focuslock/I18n.java <<'ENDOFFILE'
+          package com.rakesh.focuslock;
+
+          import android.content.Context;
+
+          import java.io.BufferedReader;
+          import java.io.InputStreamReader;
+          import java.nio.charset.StandardCharsets;
+          import java.util.ArrayList;
+          import java.util.Collections;
+          import java.util.HashMap;
+          import java.util.List;
+          import java.util.Map;
+
+          /**
+           * v3.19: Spanish / Arabic / Indonesian.
+           * assets/i18n/<bhasha>.tsv : "English<TAB>anuvaad" (\\n = nayi line).
+           * Pehle poora vaakya milao; na mile to lambe se chhote tukde badlo.
+           */
+          final class I18n {
+              private I18n() {}
+
+              private static String loaded;
+              private static Map<String, String> map = new HashMap<>();
+              private static List<String> keys = new ArrayList<>();
+              private static final Map<String, String> cache = new HashMap<>();
+
+              static synchronized String tr(Context c, String lang, String en) {
+                  if (en == null || en.isEmpty()) return en;
+                  if (!lang.equals(loaded)) load(c, lang);
+                  String hit = cache.get(en);
+                  if (hit != null) return hit;
+                  String out = map.get(en);
+                  if (out == null) out = pieces(en);
+                  if (cache.size() > 2000) cache.clear();
+                  cache.put(en, out);
+                  return out;
+              }
+
+              private static String pieces(String en) {
+                  // tukdon ko pehle nishaan (\u0001n\u0002) se badlo, taaki dobara na badlein
+                  StringBuilder s = new StringBuilder(en);
+                  List<String> found = new ArrayList<>();
+                  for (String k : keys) {
+                      if (k.length() < 2) continue;
+                      int from = 0;
+                      while (true) {
+                          int i = s.indexOf(k, from);
+                          if (i < 0) break;
+                          if (!edgeOk(s, i, k)) {
+                              from = i + 1;
+                              continue;
+                          }
+                          String mark = "\u0001" + found.size() + "\u0002";
+                          found.add(map.get(k));
+                          s.replace(i, i + k.length(), mark);
+                          from = i + mark.length();
+                      }
+                  }
+                  String r = s.toString();
+                  for (int n = 0; n < found.size(); n++) r = r.replace("\u0001" + n + "\u0002", found.get(n));
+                  return r;
+              }
+
+              /** Shabd ke beech se mat kaato (jaise "min" ko "minute" me) */
+              private static boolean edgeOk(CharSequence s, int i, String k) {
+                  if (Character.isLetter(k.charAt(0)) && i > 0 && Character.isLetter(s.charAt(i - 1))) return false;
+                  int e = i + k.length();
+                  if (Character.isLetter(k.charAt(k.length() - 1)) && e < s.length() && Character.isLetter(s.charAt(e))) return false;
+                  return true;
+              }
+
+              private static void load(Context c, String lang) {
+                  map = new HashMap<>();
+                  keys = new ArrayList<>();
+                  cache.clear();
+                  loaded = lang;
+                  try (BufferedReader br = new BufferedReader(new InputStreamReader(
+                          c.getAssets().open("i18n/" + lang + ".tsv"), StandardCharsets.UTF_8))) {
+                      String line;
+                      while ((line = br.readLine()) != null) {
+                          int tab = line.indexOf('\t');
+                          if (tab <= 0) continue;
+                          String k = line.substring(0, tab).replace("\\n", "\n");
+                          String v = line.substring(tab + 1).replace("\\n", "\n");
+                          map.put(k, v);
+                          keys.add(k);
+                      }
+                  } catch (Exception ignored) {
+                  }
+                  Collections.sort(keys, (a, b) -> b.length() - a.length());
+              }
+          }
+          ENDOFFILE
+          mkdir -p FocusLock/app/src/main/java/com/rakesh/focuslock
           cat > FocusLock/app/src/main/java/com/rakesh/focuslock/L.java <<'ENDOFFILE'
           package com.rakesh.focuslock;
 
@@ -1189,12 +2746,44 @@ jobs:
           public final class L {
               private L() {}
 
+              /** v3.19: bhashaayein (code, apne naam se) */
+              public static final String[] LANGS = {"en", "hi", "es", "ar", "id"};
+              public static final String[] LANG_NAMES = {"English", "हिंदी", "Español", "العربية", "Bahasa Indonesia"};
+
+              public static String lang(Context c) {
+                  String l = Store.lang(c);
+                  for (String x : LANGS) if (x.equals(l)) return l;
+                  return "en";
+              }
+
+              /** Hindi nahi to English aadhaar (Spanish/Arabic/Indonesian English se anuvaad hoti hain). */
               public static boolean en(Context c) {
-                  return "en".equals(Store.lang(c));
+                  return !"hi".equals(lang(c));
+              }
+
+              public static boolean rtl(Context c) {
+                  return "ar".equals(lang(c));
+              }
+
+              public static java.util.Locale locale(Context c) {
+                  String l = lang(c);
+                  if (l.equals("hi")) return new java.util.Locale("hi", "IN");
+                  if (l.equals("en")) return java.util.Locale.ENGLISH;
+                  return new java.util.Locale(l);
               }
 
               public static String t(Context c, String hi, String en) {
-                  return clean(en(c) ? en : hi);
+                  String l = lang(c);
+                  if (l.equals("hi")) return clean(hi);
+                  if (l.equals("en")) return clean(en);
+                  return clean(I18n.tr(c, l, en));
+              }
+
+              /** Sirf English vaakya ko chuni bhasha me (Hindi ke liye wahi English). */
+              public static String tr(Context c, String en) {
+                  String l = lang(c);
+                  if (l.equals("en") || l.equals("hi")) return en;
+                  return I18n.tr(c, l, en);
               }
 
               /** v3.15: emoji wale chinh hatao (saaf, insaani design). ✓ ✕ ₹ → jaise chinh rehte hain. */
@@ -1237,11 +2826,12 @@ jobs:
 
               public static String mins(Context c, long m) {
                   if (!en(c)) return Store.mins(m);
+                  String hr = tr(c, "hr"), mn = tr(c, "min");
                   if (m >= 60) {
                       long h = m / 60, r = m % 60;
-                      return r == 0 ? h + " hr" : h + " hr " + r + " min";
+                      return r == 0 ? h + " " + hr : h + " " + hr + " " + r + " " + mn;
                   }
-                  return m + " min";
+                  return m + " " + mn;
               }
 
               public static String left(Context c, long ms) {
@@ -1250,9 +2840,9 @@ jobs:
 
               public static String minutesLabel(Context c, int m) {
                   if (!en(c)) return Store.minutesLabel(m);
-                  if (m < 60) return m + " min";
-                  if (m == 60) return "1 hour";
-                  if (m % 60 == 0) return (m / 60) + " hours";
+                  if (m < 60) return m + " " + tr(c, "min");
+                  if (m == 60) return "1 " + tr(c, "hour");
+                  if (m % 60 == 0) return (m / 60) + " " + tr(c, "hours");
                   return mins(c, m);
               }
 
@@ -1328,8 +2918,11 @@ jobs:
                       {"⏳", "सीमा", "Limits"},
                       {"📅", "शेड्यूल", "Schedule"},
                       {"🛡️", "ब्लॉक", "Block"},
-                      {"📊", "आँकड़े", "Stats"}
+                      {"📊", "आँकड़े", "Stats"},
+                      {"", "सेटिंग", "Settings"}
               };
+              /** v3.19: NAV ka har button kis tab par jaata hai (5 = Pro, nav me nahi) */
+              private static final int[] NAV_TAB = {0, 1, 2, 3, 4, 6};
 
               /** Pehli baar ye apps apne aap tick rahenge (agar phone me hain). */
               private static final Set<String> POPULAR = new HashSet<>(Arrays.asList(
@@ -1393,7 +2986,8 @@ jobs:
                   rebuild();
                   handleQuick();
                   UpdateReceiver.appVisible = true;
-                  if (!showWhatsNew()) checkUpdate();
+                  boolean paid = handlePayLink() || checkPendingPay();
+                  if (!paid && !showWhatsNew()) checkUpdate();
               }
 
               @Override
@@ -1424,6 +3018,101 @@ jobs:
                   UpdateReceiver.appVisible = false;
               }
 
+              // ================= v3.17: Razorpay se payment, Pro apne-aap =================
+
+              private static boolean payBusy;
+
+              private void proOn(String code) {
+                  if (code != null && Pro.activate(this, code)) {
+                      Pro.clearPending(this);
+                      BlockService.ensure(this);
+                      new AlertDialog.Builder(this)
+                              .setTitle(t("Pro चालू हो गया", "Pro is on"))
+                              .setMessage(t("Payment मिल गया. Pro " + Pro.daysLeft(this) + " दिन के लिए चालू है. धन्यवाद!",
+                                      "Payment received. Pro is on for " + Pro.daysLeft(this) + " days. Thank you!"))
+                              .setPositiveButton(t("ठीक है", "OK"), null)
+                              .show();
+                      rebuild();
+                  }
+              }
+
+              /** Browser se palrakh://pro?code=... aaya? */
+              private boolean handlePayLink() {
+                  Intent in = getIntent();
+                  Uri u = in == null ? null : in.getData();
+                  if (u == null || !"palrakh".equals(u.getScheme())) return false;
+                  in.setData(null);
+                  setIntent(in);
+                  String code = u.getQueryParameter("code");
+                  if (code == null || code.isEmpty()) return checkPendingPay();
+                  if (Pro.verify(this, code) >= 0) {
+                      proOn(code);
+                      return true;
+                  }
+                  return false;
+              }
+
+              /** Pichhle order ka payment ho gaya? to Pro chalu (kuch baar jaanch). */
+              private boolean checkPendingPay() {
+                  if (payBusy || Pro.pendingLink(this) == null) return false;
+                  payBusy = true;
+                  final Context app = getApplicationContext();
+                  new Thread(() -> {
+                      String code = null;
+                      for (int i = 0; i < 4 && code == null; i++) {
+                          code = Pro.pollCode(app);
+                          if (code == null && Pro.pendingLink(app) != null && i < 3) {
+                              try {
+                                  Thread.sleep(3000);
+                              } catch (InterruptedException ignored) {
+                              }
+                          }
+                      }
+                      final String c = code;
+                      runOnUiThread(() -> {
+                          payBusy = false;
+                          if (c != null && !isFinishing()) proOn(c);
+                      });
+                  }).start();
+                  return true;
+              }
+
+              /** Plan dabaaya: Razorpay ka payment page kholo. */
+              private void payOnline(int rs, String plan, String dev) {
+                  if (payBusy) return;
+                  payBusy = true;
+                  toast(t("Payment पेज खुल रहा है…", "Opening payment page…"));
+                  final Context app = getApplicationContext();
+                  new Thread(() -> {
+                      String[] r = Pro.order(app, rs);
+                      runOnUiThread(() -> {
+                          payBusy = false;
+                          if (r != null) {
+                              try {
+                                  startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(r[1])));
+                              } catch (Exception e) {
+                                  toast(t("Browser नहीं खुला", "Couldn't open the browser"));
+                              }
+                              return;
+                          }
+                          new AlertDialog.Builder(this)
+                                  .setTitle(plan + " · ₹" + rs)
+                                  .setMessage(t("Payment पेज नहीं खुला. Internet चालू करके फिर कोशिश करें.\n\n"
+                                                  + "या Razorpay पेज पर ₹" + rs + " भेजें और फ़ोन ID " + dev + " WhatsApp पर भेजें, code मिल जाएगा.",
+                                          "Couldn't open the payment page. Turn on the internet and try again.\n\n"
+                                                  + "Or pay ₹" + rs + " on the Razorpay page and send phone ID " + dev + " on WhatsApp to get your code."))
+                                  .setPositiveButton(t("फिर कोशिश करें", "Try again"), (d, w) -> payOnline(rs, plan, dev))
+                                  .setNegativeButton(t("Razorpay पेज", "Razorpay page"), (d, w) -> {
+                                      try {
+                                          startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(Pro.RZP_ME)));
+                                      } catch (Exception ignored) {
+                                      }
+                                  })
+                                  .show();
+                      });
+                  }).start();
+              }
+
               // ================= v3.16: apne-aap update =================
 
               private static Updater.Info pendingUpdate;
@@ -1436,8 +3125,8 @@ jobs:
                   if (n == null) return false;
                   Updater.markNotesShown(this);
                   new AlertDialog.Builder(this)
-                          .setTitle(t("Lagaam v" + Updater.currentVersion(this) + " में अपडेट हो गया",
-                                  "Lagaam updated to v" + Updater.currentVersion(this)))
+                          .setTitle(t("Palrakh v" + Updater.currentVersion(this) + " में अपडेट हो गया",
+                                  "Palrakh updated to v" + Updater.currentVersion(this)))
                           .setMessage(L.clean(t("क्या नया है:\n\n", "What's new:\n\n")
                                   + (n.isEmpty() ? t("छोटे सुधार", "Small improvements") : n)))
                           .setPositiveButton(t("ठीक है", "OK"), null)
@@ -1471,7 +3160,7 @@ jobs:
                   LinearLayout box = new LinearLayout(this);
                   box.setOrientation(LinearLayout.VERTICAL);
                   box.setPadding(dp(22), dp(8), dp(22), dp(4));
-                  box.addView(text(t("Lagaam अब नए वर्शन में अपडेट होगा.", "Lagaam will now update to the new version."),
+                  box.addView(text(t("Palrakh अब नए वर्शन में अपडेट होगा.", "Palrakh will now update to the new version."),
                           15, ui.text, false));
                   String n = i.notes(this);
                   TextView whats = text(t("क्या नया है:", "What's new:"), 15, ui.text, true);
@@ -1493,9 +3182,9 @@ jobs:
                           .setView(sv)
                           .setCancelable(false);
                   if (!Updater.canInstall(this)) {
-                      // Pehli baar: Lagaam ko install ki anumati chahiye
-                      status.setText(L.clean(t("एक बार अनुमति दें: अगली स्क्रीन पर Lagaam के लिए \"Allow\" चालू करें, फिर वापस आएँ.",
-                              "Allow once: turn on \"Allow\" for Lagaam on the next screen, then come back.")));
+                      // Pehli baar: Palrakh ko install ki anumati chahiye
+                      status.setText(L.clean(t("एक बार अनुमति दें: अगली स्क्रीन पर Palrakh के लिए \"Allow\" चालू करें, फिर वापस आएँ.",
+                              "Allow once: turn on \"Allow\" for Palrakh on the next screen, then come back.")));
                       bar.setVisibility(View.GONE);
                       b.setPositiveButton(t("अनुमति दें", "Allow"), (d, w) -> {
                           try {
@@ -1557,6 +3246,8 @@ jobs:
                   int light = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
                   flags = ui.dark ? (flags & ~light) : (flags | light);
                   decor.setSystemUiVisibility(flags);
+                  // v3.19: Arabic me daayein se baayein
+                  decor.setLayoutDirection(L.rtl(this) ? View.LAYOUT_DIRECTION_RTL : View.LAYOUT_DIRECTION_LTR);
 
                   LinearLayout outer = new LinearLayout(this);
                   outer.setOrientation(LinearLayout.VERTICAL);
@@ -1584,7 +3275,7 @@ jobs:
 
                   LinearLayout titles = new LinearLayout(this);
                   titles.setOrientation(LinearLayout.VERTICAL);
-                  TextView appTitle = text(t("Lagaam", "Lagaam"), 24, ui.text, true);
+                  TextView appTitle = text(t("Palrakh", "Palrakh"), 24, ui.text, true);
                   appTitle.setLetterSpacing(0f);
                   titles.addView(appTitle);
                   TextView sub = text(t("ध्यान आपका, नियम आपके", "Your focus, your rules")
@@ -1601,23 +3292,9 @@ jobs:
                   });
                   LinearLayout.LayoutParams plp0 = new LinearLayout.LayoutParams(
                           LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-                  plp0.setMargins(0, 0, dp(8), 0);
                   header.addView(pro, plp0);
 
-                  TextView lang = pill(L.en(this) ? "हिं" : "EN", false);
-                  lang.setOnClickListener(v -> {
-                      Store.setLang(this, L.en(this) ? "hi" : "en");
-                      labelCache.clear();
-                      rebuild();
-                  });
-                  header.addView(lang);
-                  String th = Store.theme(this);
-                  TextView theme = pill(t("रंग", "Theme"), false);
-                  theme.setOnClickListener(v -> chooseTheme());
-                  LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(
-                          LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-                  tlp.setMargins(dp(8), 0, 0, 0);
-                  header.addView(theme, tlp);
+                  // v3.19: bhasha aur rang ab Settings tab me
                   outer.addView(header);
 
                   // content
@@ -1669,8 +3346,8 @@ jobs:
               private void drawNav() {
                   nav.removeAllViews();
                   for (int i = 0; i < NAV.length; i++) {
-                      final int idx = i;
-                      boolean sel = i == tab;
+                      final int idx = NAV_TAB[i];
+                      boolean sel = idx == tab;
                       LinearLayout item = new LinearLayout(this);
                       item.setOrientation(LinearLayout.VERTICAL);
                       item.setGravity(Gravity.CENTER);
@@ -1684,7 +3361,7 @@ jobs:
                       }
                       Fx.press(item);
                       // v3.15: sirf naam, icon nahi
-                      TextView lb = text(L.en(this) ? NAV[i][2] : NAV[i][1], 14, sel ? ui.onAccent : ui.muted, true);
+                      TextView lb = text(t(NAV[i][1], NAV[i][2]), 13, sel ? ui.onAccent : ui.muted, true);
                       lb.setTypeface(Fonts.head(this));
                       lb.setGravity(Gravity.CENTER);
                       lb.setPadding(0, dp(6), 0, sel ? dp(9) : dp(6));
@@ -1747,6 +3424,7 @@ jobs:
                       case 3: renderBlock(); break;
                       case 4: renderStats(); break;
                       case 5: renderPro(); break;
+                      case 6: renderSettings(); break;
                       default:
                           if (Store.active(this)) renderActive();
                           else renderFocusSetup();
@@ -1763,7 +3441,7 @@ jobs:
                           15, ui.muted, false));
                   c.addView(gap(14));
                   c.addView(stepRow(usage, t("1. ऐप उपयोग की अनुमति", "1. Usage access"),
-                          t("सूची में \"Lagaam\" चालू करें", "Turn on \"Lagaam\" in the list"),
+                          t("सूची में \"Palrakh\" चालू करें", "Turn on \"Palrakh\" in the list"),
                           v -> open(new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))));
                   c.addView(gap(10));
                   c.addView(stepRow(overlay, t("2. दूसरे ऐप्स के ऊपर दिखाएँ", "2. Display over other apps"),
@@ -1794,8 +3472,8 @@ jobs:
                   LinearLayout c = softCard(ui.warnSoft);
                   c.addView(text(t("⚠️ अगर \"Restricted setting\" लिखा आए", "⚠️ If you see \"Restricted setting\""),
                           14, ui.warn, true));
-                  c.addView(text(t("Settings → Apps → Lagaam → ऊपर ⋮ → \"Allow restricted settings\" दबाएँ, फिर दोबारा कोशिश करें।",
-                          "Settings → Apps → Lagaam → top ⋮ → \"Allow restricted settings\", then try again."),
+                  c.addView(text(t("Settings → Apps → Palrakh → ऊपर ⋮ → \"Allow restricted settings\" दबाएँ, फिर दोबारा कोशिश करें।",
+                          "Settings → Apps → Palrakh → top ⋮ → \"Allow restricted settings\", then try again."),
                           13, ui.muted, false));
                   content.addView(c);
               }
@@ -2093,8 +3771,8 @@ jobs:
                               .setMessage(t("इसके बिना कोई लॉक के बीच ऐप uninstall करके लॉक तोड़ सकता है। एक बार चालू करना काफ़ी है।",
                                       "Without it, someone could uninstall the app to break the lock. You only need to turn it on once."))
                               .setPositiveButton(t("हाँ, चालू करें", "Yes, turn on"), (d, w) -> askAdmin(
-                                      t("लॉक के दौरान Lagaam हटाया न जा सके। यह कोई जानकारी नहीं पढ़ता।",
-                                              "So Lagaam can't be removed during a lock. It reads no data.")))
+                                      t("लॉक के दौरान Palrakh हटाया न जा सके। यह कोई जानकारी नहीं पढ़ता।",
+                                              "So Palrakh can't be removed during a lock. It reads no data.")))
                               .setNegativeButton(t("बिना इसके शुरू करें", "Start without it"), (d, w) -> confirmStart())
                               .show();
                       return;
@@ -2295,7 +3973,7 @@ jobs:
                   for (int d : order) {
                       final int bit = d;
                       boolean sel = ((schedDays >> d) & 1) == 1;
-                      TextView tv = text(L.en(this) ? DAYS_EN[d] : DAYS_HI[d], 15, sel ? ui.onAccent : ui.text, true);
+                      TextView tv = text(t(DAYS_HI[d], DAYS_EN[d]), 15, sel ? ui.onAccent : ui.text, true);
                       tv.setGravity(Gravity.CENTER);
                       tv.setBackground(round(sel ? ui.accent : ui.accentSoft, 22));
                       LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(42), 1f);
@@ -2376,8 +4054,8 @@ jobs:
                   st.addView(text(a11y ? t("✅ ब्लॉक सेवा चालू है", "✅ Block service is ON")
                           : t("❌ ब्लॉक सेवा बंद है", "❌ Block service is OFF"), 17, a11y ? ui.accent : ui.danger, true));
                   st.addView(text(a11y ? t("Shorts, websites और सख़्त मोड काम करेंगे।", "Shorts, websites and strict mode will work.")
-                                  : t("यहाँ टैप करें → Installed/Downloaded apps → \"Lagaam – Shorts/Reels block\" → ON",
-                                  "Tap here → Installed/Downloaded apps → \"Lagaam – Shorts/Reels block\" → ON"),
+                                  : t("यहाँ टैप करें → Installed/Downloaded apps → \"Palrakh – Shorts/Reels block\" → ON",
+                                  "Tap here → Installed/Downloaded apps → \"Palrakh – Shorts/Reels block\" → ON"),
                           13, ui.muted, false));
                   if (!a11y) st.setOnClickListener(v -> open(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
                   content.addView(st);
@@ -2642,8 +4320,8 @@ jobs:
                       LinearLayout up = softCard(ui.warnSoft);
                       up.addView(text(t("⚠️ एक बार दोबारा चालू करें (नई सुरक्षा के लिए)। यहाँ टैप करें।",
                               "⚠️ Turn it on once more (for the new protection). Tap here."), 13, ui.warn, true));
-                      up.setOnClickListener(v -> askAdmin(t("लॉक के दौरान Lagaam हटाया न जा सके।",
-                              "So Lagaam can't be removed during a lock.")));
+                      up.setOnClickListener(v -> askAdmin(t("लॉक के दौरान Palrakh हटाया न जा सके।",
+                              "So Palrakh can't be removed during a lock.")));
                       c.addView(up);
                   }
                   c.addView(text(t("चालू होने पर ऐप सीधे uninstall नहीं होगा। लॉक के दौरान इसे बंद करने की कोशिश पर फ़ोन home पर चला जाएगा और screen lock हो जाएगी। लॉक के दौरान यह बंद भी नहीं होगा।",
@@ -2665,8 +4343,8 @@ jobs:
                           Intent i = new Intent(android.app.admin.DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN);
                           i.putExtra(android.app.admin.DevicePolicyManager.EXTRA_DEVICE_ADMIN, admin);
                           i.putExtra(android.app.admin.DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-                                  t("इससे Lagaam बिना अनुमति हटाया नहीं जा सकेगा। यह कोई जानकारी नहीं पढ़ता।",
-                                          "This stops Lagaam from being removed without permission. It reads no data."));
+                                  t("इससे Palrakh बिना अनुमति हटाया नहीं जा सकेगा। यह कोई जानकारी नहीं पढ़ता।",
+                                          "This stops Palrakh from being removed without permission. It reads no data."));
                           open(i);
                       }
                   });
@@ -2808,8 +4486,8 @@ jobs:
                           13, ui.muted, false));
                   if (!access) {
                       LinearLayout w = softCard(ui.warnSoft);
-                      w.addView(text(t("पहले अनुमति दें: यहाँ टैप करें → \"Lagaam – Notification hold\" → ON",
-                              "Allow first: tap here → \"Lagaam – Notification hold\" → ON"), 13, ui.warn, true));
+                      w.addView(text(t("पहले अनुमति दें: यहाँ टैप करें → \"Palrakh – Notification hold\" → ON",
+                              "Allow first: tap here → \"Palrakh – Notification hold\" → ON"), 13, ui.warn, true));
                       w.setOnClickListener(v -> open(new Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")));
                       c.addView(w);
                   }
@@ -2860,24 +4538,24 @@ jobs:
                   String en;
                   if (m.contains("xiaomi") || m.contains("redmi") || m.contains("poco")) {
                       brand = "Xiaomi / Redmi / POCO";
-                      hi = "1. Settings → Apps → Lagaam → Autostart ON\n2. Battery saver → No restrictions\n3. Recent apps में Lagaam को नीचे खींचकर 🔒 lock करें";
-                      en = "1. Settings → Apps → Lagaam → Autostart ON\n2. Battery saver → No restrictions\n3. In Recent apps, pull Lagaam down and tap 🔒";
+                      hi = "1. Settings → Apps → Palrakh → Autostart ON\n2. Battery saver → No restrictions\n3. Recent apps में Palrakh को नीचे खींचकर 🔒 lock करें";
+                      en = "1. Settings → Apps → Palrakh → Autostart ON\n2. Battery saver → No restrictions\n3. In Recent apps, pull Palrakh down and tap 🔒";
                   } else if (m.contains("vivo") || m.contains("iqoo")) {
                       brand = "Vivo / iQOO";
-                      hi = "1. Settings → Battery → Background power consumption → Lagaam → Allow\n2. i Manager → App manager → Autostart → Lagaam ON\n3. Ultra power saving mode बंद रखें";
-                      en = "1. Settings → Battery → Background power consumption → Lagaam → Allow\n2. i Manager → App manager → Autostart → Lagaam ON\n3. Keep Ultra power saving off";
+                      hi = "1. Settings → Battery → Background power consumption → Palrakh → Allow\n2. i Manager → App manager → Autostart → Palrakh ON\n3. Ultra power saving mode बंद रखें";
+                      en = "1. Settings → Battery → Background power consumption → Palrakh → Allow\n2. i Manager → App manager → Autostart → Palrakh ON\n3. Keep Ultra power saving off";
                   } else if (m.contains("oppo") || m.contains("realme") || m.contains("oneplus")) {
                       brand = "OPPO / Realme / OnePlus";
-                      hi = "1. Settings → Apps → Lagaam → Battery usage\n2. Allow background activity + Allow auto launch ON\n3. Recent apps में ऐप को 🔒 lock करें";
-                      en = "1. Settings → Apps → Lagaam → Battery usage\n2. Turn on Allow background activity + Allow auto launch\n3. Lock the app 🔒 in Recent apps";
+                      hi = "1. Settings → Apps → Palrakh → Battery usage\n2. Allow background activity + Allow auto launch ON\n3. Recent apps में ऐप को 🔒 lock करें";
+                      en = "1. Settings → Apps → Palrakh → Battery usage\n2. Turn on Allow background activity + Allow auto launch\n3. Lock the app 🔒 in Recent apps";
                   } else if (m.contains("samsung")) {
                       brand = "Samsung";
-                      hi = "1. Settings → Battery → Background usage limits → Never sleeping apps में Lagaam जोड़ें\n2. App info → Battery → Unrestricted";
-                      en = "1. Settings → Battery → Background usage limits → add Lagaam to Never sleeping apps\n2. App info → Battery → Unrestricted";
+                      hi = "1. Settings → Battery → Background usage limits → Never sleeping apps में Palrakh जोड़ें\n2. App info → Battery → Unrestricted";
+                      en = "1. Settings → Battery → Background usage limits → add Palrakh to Never sleeping apps\n2. App info → Battery → Unrestricted";
                   } else {
                       brand = Build.MANUFACTURER == null ? "Android" : Build.MANUFACTURER;
-                      hi = "1. Settings → Apps → Lagaam → Battery → Unrestricted\n2. अगर Autostart का विकल्प हो, तो ON करें";
-                      en = "1. Settings → Apps → Lagaam → Battery → Unrestricted\n2. If there is an Autostart option, turn it on";
+                      hi = "1. Settings → Apps → Palrakh → Battery → Unrestricted\n2. अगर Autostart का विकल्प हो, तो ON करें";
+                      en = "1. Settings → Apps → Palrakh → Battery → Unrestricted\n2. If there is an Autostart option, turn it on";
                   }
                   LinearLayout c = card();
                   c.addView(text(t("📱 आपके फ़ोन (" + brand + ") के लिए बैटरी सेटिंग", "📱 Battery settings for your phone (" + brand + ")"), 16, ui.text, true));
@@ -3052,7 +4730,7 @@ jobs:
                   cal.add(Calendar.DAY_OF_YEAR, -6);
                   for (int i = 0; i < 7; i++) {
                       int d = cal.get(Calendar.DAY_OF_WEEK) - 1;
-                      labels[i] = L.en(this) ? DAYS_EN[d] : DAYS_HI[d];
+                      labels[i] = t(DAYS_HI[d], DAYS_EN[d]);
                       cal.add(Calendar.DAY_OF_YEAR, 1);
                   }
                   long sum = 0;
@@ -3238,7 +4916,7 @@ jobs:
                       ic.setGravity(Gravity.CENTER);
                       if (!on) ic.setAlpha(0.5f);
                       cell.addView(ic);
-                      TextView nm = text(L.en(this) ? b[2] : b[1], 11, on ? ui.text : ui.muted, on);
+                      TextView nm = text(t(b[1], b[2]), 11, on ? ui.text : ui.muted, on);
                       nm.setGravity(Gravity.CENTER);
                       cell.addView(nm);
                       cells.add(cell);
@@ -3412,7 +5090,7 @@ jobs:
 
               @Override
               public void onBackPressed() {
-                  if (tab == 5) {
+                  if (tab == 5 || tab == 6) {
                       tab = 0;
                       render();
                   } else {
@@ -3453,7 +5131,7 @@ jobs:
 
                   LinearLayout top = card();
                   top.setBackground(grad(ui.accent, ui.accent2, 20));
-                  TextView title = text(t("⭐ Lagaam Pro", "⭐ Lagaam Pro"), 22, ui.onAccent, true);
+                  TextView title = text(t("⭐ Palrakh Pro", "⭐ Palrakh Pro"), 22, ui.onAccent, true);
                   title.setOnLongClickListener(v -> {
                       askAdmin();
                       return true;
@@ -3462,7 +5140,7 @@ jobs:
                   if (has) {
                       long last = Pro.lastDay(this);
                       String date = java.time.LocalDate.ofEpochDay(last).format(java.time.format.DateTimeFormatter.ofPattern(
-                              "d MMM yyyy", L.en(this) ? Locale.ENGLISH : new Locale("hi", "IN")));
+                              "d MMM yyyy", L.locale(this)));
                       top.addView(text(t("✅ Pro चालू है · " + date + " तक (" + Pro.daysLeft(this) + " दिन)",
                               "✅ Pro is on · until " + date + " (" + Pro.daysLeft(this) + " days)"), 15, ui.onAccent, false));
                   } else {
@@ -3489,15 +5167,15 @@ jobs:
                       f.addView(text("•  " + t(x[0], x[1]), 14, ui.text, false));
                   }
                   f.addView(gap(6));
-                  f.addView(text(liteEd ? t("Free में भी: Lagaam, widget, 1 शेड्यूल।", "Free includes: focus lock, widget, 1 schedule.")
-                          : t("Free में भी: Lagaam, Shorts/Reels ब्लॉक, बंद ऐप की website ब्लॉक, widget, 1 शेड्यूल।",
+                  f.addView(text(liteEd ? t("Free में भी: Palrakh, widget, 1 शेड्यूल।", "Free includes: focus lock, widget, 1 schedule.")
+                          : t("Free में भी: Palrakh, Shorts/Reels ब्लॉक, बंद ऐप की website ब्लॉक, widget, 1 शेड्यूल।",
                           "Free includes: focus lock, Shorts/Reels block, locked apps' websites, widget, 1 schedule."),
                           12, ui.muted, false));
                   content.addView(f);
 
                   // plan
                   LinearLayout pl = card();
-                  pl.addView(text(t("1️⃣ प्लान चुनें और UPI से भेजें", "1️⃣ Pick a plan and pay by UPI"), 16, ui.text, true));
+                  pl.addView(text(t("प्लान चुनें और pay करें", "Pick a plan and pay"), 16, ui.text, true));
                   pl.addView(gap(6));
                   String[][] names = {
                           {"🌱 आज़माएँ: 3 दिन", "🌱 Try: 3 days"},
@@ -3515,21 +5193,22 @@ jobs:
                       row.addView(text(nm, 15, ui.text, true),
                               new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
                       row.addView(text("₹" + rs, 18, ui.accent, true));
-                      row.setOnClickListener(v -> choosePay(rs, nm, dev));
+                      row.setOnClickListener(v -> payOnline(rs, nm, dev));
                       LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                               LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
                       lp.setMargins(0, dp(4), 0, dp(4));
                       pl.addView(row, lp);
                   }
-                  pl.addView(text(t("टैप करें: UPI ऐप से भेजें, या UPI ID कॉपी करके खुद भेजें।", "Tap: pay via a UPI app, or copy the UPI ID and pay yourself."),
+                  pl.addView(text(t("UPI, card या net banking से Razorpay पर pay करें। Payment होते ही Pro अपने-आप चालू हो जाएगा।",
+                          "Pay on Razorpay by UPI, card or net banking. Pro turns on by itself as soon as you pay."),
                           12, ui.muted, false));
                   content.addView(pl);
 
-                  renderQrCard();
-
                   // phone id + whatsapp
                   LinearLayout id = card();
-                  id.addView(text(t("2️⃣ Screenshot और फ़ोन ID WhatsApp पर भेजें", "2️⃣ Send the screenshot and phone ID on WhatsApp"), 16, ui.text, true));
+                  id.addView(text(t("Pay किया पर Pro चालू नहीं हुआ?", "Paid but Pro didn't turn on?"), 16, ui.text, true));
+                  id.addView(text(t("Payment का screenshot और यह फ़ोन ID WhatsApp पर भेजें।", "Send the payment screenshot and this phone ID on WhatsApp."),
+                          13, ui.muted, false));
                   id.addView(gap(6));
                   TextView idv = text(t("फ़ोन ID: ", "Phone ID: ") + dev, 20, ui.accent, true);
                   idv.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
@@ -3540,8 +5219,8 @@ jobs:
                   TextView copy = pill(t("📋 कॉपी", "📋 Copy"), false);
                   copy.setOnClickListener(v -> copyText(dev));
                   TextView wa = pill(t("💬 WhatsApp पर भेजें", "💬 Send on WhatsApp"), true);
-                  wa.setOnClickListener(v -> openWhatsApp(t("नमस्ते, मैंने Lagaam Pro के लिए पैसे भेजे हैं। फ़ोन ID: ",
-                          "Hi, I've paid for Lagaam Pro. Phone ID: ") + dev));
+                  wa.setOnClickListener(v -> openWhatsApp(t("नमस्ते, मैंने Palrakh Pro के लिए पैसे भेजे हैं। फ़ोन ID: ",
+                          "Hi, I've paid for Palrakh Pro. Phone ID: ") + dev));
                   btns.addView(copy);
                   LinearLayout.LayoutParams wlp = new LinearLayout.LayoutParams(
                           LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
@@ -3552,7 +5231,7 @@ jobs:
 
                   // code
                   LinearLayout cd = card();
-                  cd.addView(text(t("3️⃣ मिला हुआ code यहाँ डालें", "3️⃣ Enter the code you received"), 16, ui.text, true));
+                  cd.addView(text(t("Code मिला है? यहाँ डालें", "Have a code? Enter it here"), 16, ui.text, true));
                   final EditText et = new EditText(this);
                   et.setHint("20774-K7P3QX9M");
                   et.setSingleLine(true);
@@ -3581,8 +5260,8 @@ jobs:
 
                   if (Pro.adminOn(this)) renderAdmin();
 
-                  TextView note = text(t("पैसे सीधे बनाने वाले को जाते हैं। ऐप internet इस्तेमाल नहीं करता, code फ़ोन में ही जाँचा जाता है।",
-                          "Payment goes straight to the maker. The app uses no internet; the code is checked on the phone."),
+                  TextView note = text(t("Payment Razorpay पर सुरक्षित होता है। ऐप सिर्फ़ आपका फ़ोन ID भेजता है, कोई निजी जानकारी नहीं।",
+                          "Payment is handled securely by Razorpay. The app only sends your phone ID, no personal data."),
                           12, ui.muted, false);
                   note.setPadding(dp(6), 0, dp(6), dp(12));
                   content.addView(note);
@@ -3635,15 +5314,15 @@ jobs:
                   try {
                       android.graphics.Bitmap bmp = android.graphics.BitmapFactory.decodeResource(getResources(), R.drawable.upi_qr);
                       android.content.ContentValues cv = new android.content.ContentValues();
-                      cv.put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, "Lagaam-UPI-QR.png");
+                      cv.put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, "Palrakh-UPI-QR.png");
                       cv.put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png");
-                      cv.put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, "Pictures/Lagaam");
+                      cv.put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, "Pictures/Palrakh");
                       Uri uri = getContentResolver().insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, cv);
                       if (uri == null) throw new Exception();
                       try (java.io.OutputStream os = getContentResolver().openOutputStream(uri)) {
                           bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, os);
                       }
-                      toast(t("✅ गैलरी में सेव हो गया (Pictures/Lagaam)", "✅ Saved to gallery (Pictures/Lagaam)"));
+                      toast(t("✅ गैलरी में सेव हो गया (Pictures/Palrakh)", "✅ Saved to gallery (Pictures/Palrakh)"));
                   } catch (Exception e) {
                       toast(t("सेव नहीं हुआ, screenshot ले लें", "Couldn't save, take a screenshot"));
                   }
@@ -3675,8 +5354,8 @@ jobs:
                                           + "4. In the note / message write: " + dev + "\n"
                                           + "5. Send the screenshot on WhatsApp to get your code."))
                           .setPositiveButton(t("💬 WhatsApp खोलें", "💬 Open WhatsApp"), (d, w) -> openWhatsApp(
-                                  t("नमस्ते, मैंने Lagaam Pro के लिए ₹" + rs + " भेजे हैं। फ़ोन ID: ",
-                                          "Hi, I've paid ₹" + rs + " for Lagaam Pro. Phone ID: ") + dev))
+                                  t("नमस्ते, मैंने Palrakh Pro के लिए ₹" + rs + " भेजे हैं। फ़ोन ID: ",
+                                          "Hi, I've paid ₹" + rs + " for Palrakh Pro. Phone ID: ") + dev))
                           .setNegativeButton(t("ठीक है", "OK"), null)
                           .show();
               }
@@ -3691,7 +5370,7 @@ jobs:
                       Uri u = ub
                               .appendQueryParameter("am", rs + ".00")
                               .appendQueryParameter("cu", "INR")
-                              .appendQueryParameter("tn", "Lagaam Pro " + dev)
+                              .appendQueryParameter("tn", "Palrakh Pro " + dev)
                               .build();
                       startActivity(Intent.createChooser(new Intent(Intent.ACTION_VIEW, u), t("UPI ऐप चुनें", "Choose UPI app")));
                   } catch (Exception e) {
@@ -3711,7 +5390,7 @@ jobs:
 
               private void copyText(String s) {
                   android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
-                  cm.setPrimaryClip(android.content.ClipData.newPlainText("Lagaam", s));
+                  cm.setPrimaryClip(android.content.ClipData.newPlainText("Palrakh", s));
                   toast(t("📋 कॉपी हो गया", "📋 Copied"));
               }
 
@@ -3787,7 +5466,7 @@ jobs:
                       if (out.getText().length() == 0) return;
                       Intent i = new Intent(Intent.ACTION_SEND);
                       i.setType("text/plain");
-                      i.putExtra(Intent.EXTRA_TEXT, t("आपका Lagaam Pro code: ", "Your Lagaam Pro code: ") + out.getText()
+                      i.putExtra(Intent.EXTRA_TEXT, t("आपका Palrakh Pro code: ", "Your Palrakh Pro code: ") + out.getText()
                               + t("\nऐप में ⭐ → 3️⃣ में डालें।", "\nEnter it in the app under ⭐ → 3️⃣."));
                       startActivity(Intent.createChooser(i, t("भेजें", "Send")));
                   });
@@ -3845,6 +5524,43 @@ jobs:
               }
 
               /** v3.8: rang-roop aur light/dark chunna */
+              // ================= v3.19: Settings =================
+
+              private void renderSettings() {
+                  LinearLayout lc = card();
+                  lc.addView(text(t("भाषा", "Language"), 17, ui.text, true));
+                  lc.addView(gap(8));
+                  List<View> ls = new ArrayList<>();
+                  String cur = L.lang(this);
+                  for (int i = 0; i < L.LANGS.length; i++) {
+                      final String code = L.LANGS[i];
+                      TextView p = pill(L.LANG_NAMES[i], code.equals(cur));
+                      p.setOnClickListener(v -> {
+                          Store.setLang(this, code);
+                          labelCache.clear();
+                          rebuild();
+                      });
+                      ls.add(p);
+                  }
+                  addFlow(lc, ls, 2);
+                  content.addView(lc);
+
+                  LinearLayout tc = card();
+                  tc.addView(text(t("रूप और रंग", "Appearance"), 17, ui.text, true));
+                  tc.addView(text(t("ऐप का रंग और दिन/रात mode बदलें", "Change the app colour and light/dark mode"), 13, ui.muted, false));
+                  tc.addView(gap(8));
+                  TextView open = pill(t("रंग बदलें", "Change theme"), true);
+                  open.setOnClickListener(v -> chooseTheme());
+                  tc.addView(open, new LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+                  content.addView(tc);
+
+                  TextView ver = text("Palrakh v" + Updater.currentVersion(this), 12, ui.muted, false);
+                  ver.setGravity(Gravity.CENTER);
+                  ver.setPadding(0, dp(6), 0, dp(12));
+                  content.addView(ver);
+              }
+
               private void chooseTheme() {
                   LinearLayout box = new LinearLayout(this);
                   box.setOrientation(LinearLayout.VERTICAL);
@@ -4295,6 +6011,8 @@ jobs:
                   root.addView(stat);
 
                   setContentView(root);
+
+                  getWindow().getDecorView().setLayoutDirection(L.rtl(this) ? android.view.View.LAYOUT_DIRECTION_RTL : android.view.View.LAYOUT_DIRECTION_LTR);
                   showFor(getIntent());
               }
 
@@ -4468,7 +6186,7 @@ jobs:
 
               // ---- bhugtan ki jaankari (Rakesh ki) ----
               public static final String UPI_ID = "__UPI_ID__";
-              public static final String UPI_NAME = "Lagaam";
+              public static final String UPI_NAME = "Palrakh";
               /** 91 ke saath, bina + ke */
               public static final String WHATSAPP = "__WHATSAPP__";
 
@@ -4476,6 +6194,11 @@ jobs:
               public static final String QR_PA = "9617093276@okbizaxis";
               public static final String QR_PN = "CSC STORE";
               public static final String QR_MC = "4816";
+
+              /** v3.17: Razorpay se payment + apne-aap code (Cloudflare Worker "palrakh-pay"). */
+              public static final String WORKER = "https://palrakh-pay.rakeshkirad131.workers.dev";
+              /** Worker na chale to: seedha Razorpay page (code WhatsApp se). */
+              public static final String RZP_ME = "https://razorpay.me/@rakeshkirad";
 
               // ---- daam ----
               public static final int[][] PLANS = {
@@ -4598,6 +6321,81 @@ jobs:
               public static int daysLeft(Context c) {
                   long d = lastDay(c);
                   return d < 0 ? 0 : (int) Math.max(0, d - today(c) + 1);
+              }
+
+              // ---- v3.17: online payment ----
+
+              /** Order banao. Lautata hai {linkId, payUrl} ya null. Background thread par chalayen. */
+              public static String[] order(Context c, int rs) {
+                  try {
+                      long from = has(c) ? lastDay(c) + 1 : today(c);
+                      org.json.JSONObject b = new org.json.JSONObject();
+                      b.put("plan", String.valueOf(rs));
+                      b.put("device", deviceId(c));
+                      b.put("from", from);
+                      b.put("lang", L.lang(c));   // v3.20: payment ke baad ka page isi bhasha me
+                      org.json.JSONObject r = new org.json.JSONObject(http("POST", WORKER + "/order", b.toString()));
+                      String id = r.optString("id", ""), url = r.optString("url", "");
+                      if (id.isEmpty() || url.isEmpty()) return null;
+                      p(c).edit().putString("payLink", id).putLong("payAt", System.currentTimeMillis()).apply();
+                      return new String[]{id, url};
+                  } catch (Exception e) {
+                      return null;
+                  }
+              }
+
+              /** Pichhla order: paid ho gaya to code lautao, warna null. Background thread par. */
+              public static String pollCode(Context c) {
+                  String id = pendingLink(c);
+                  if (id == null) return null;
+                  try {
+                      org.json.JSONObject r = new org.json.JSONObject(http("GET", WORKER + "/status?id=" + id, null));
+                      if (r.optBoolean("paid", false)) return r.optString("code", null);
+                      String st = r.optString("status", "");
+                      if (st.equals("expired") || st.equals("cancelled")) clearPending(c);
+                  } catch (Exception ignored) {
+                  }
+                  return null;
+              }
+
+              /** 3 ghante tak ka adhoora order */
+              public static String pendingLink(Context c) {
+                  String id = p(c).getString("payLink", null);
+                  if (id == null) return null;
+                  if (System.currentTimeMillis() - p(c).getLong("payAt", 0) > 3L * 3600 * 1000) {
+                      clearPending(c);
+                      return null;
+                  }
+                  return id;
+              }
+
+              public static void clearPending(Context c) {
+                  p(c).edit().remove("payLink").remove("payAt").apply();
+              }
+
+              private static String http(String method, String url, String body) throws Exception {
+                  java.net.HttpURLConnection con = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+                  try {
+                      con.setRequestMethod(method);
+                      con.setConnectTimeout(15000);
+                      con.setReadTimeout(20000);
+                      con.setRequestProperty("User-Agent", "Palrakh-Android");
+                      if (body != null) {
+                          con.setDoOutput(true);
+                          con.setRequestProperty("Content-Type", "application/json");
+                          try (java.io.OutputStream os = con.getOutputStream()) {
+                              os.write(body.getBytes(StandardCharsets.UTF_8));
+                          }
+                      }
+                      java.io.InputStream in = con.getResponseCode() < 400 ? con.getInputStream() : con.getErrorStream();
+                      java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+                      byte[] buf = new byte[4096];
+                      int n;
+                      while (in != null && (n = in.read(buf)) > 0) bo.write(buf, 0, n);
+                      return bo.toString("UTF-8");
+                  } finally {
+                      con.disconnect();
+                  }
               }
 
               // ---- admin ----
@@ -4734,7 +6532,7 @@ jobs:
 
               private static String[] pick(Context c, int i) {
                   boolean en = L.en(c);
-                  return new String[]{en ? Q[i][1] : Q[i][0], en ? Q[i][3] : Q[i][2]};
+                  return new String[]{en ? L.tr(c, Q[i][1]) : Q[i][0], en ? L.tr(c, Q[i][3]) : Q[i][2]};
               }
           }
           ENDOFFILE
@@ -5028,7 +6826,7 @@ jobs:
               }
 
               public static String date(Context c, long day) {
-                  Locale loc = L.en(c) ? Locale.ENGLISH : new Locale("hi", "IN");
+                  Locale loc = L.locale(c);
                   return LocalDate.ofEpochDay(day).format(DateTimeFormatter.ofPattern("d MMM", loc));
               }
 
@@ -5178,7 +6976,7 @@ jobs:
                   if (now - lastCheck < 300 && event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return;
                   lastCheck = now;
 
-                  // v3.16: Lagaam ka apna update install ho raha hai — installer screen mat roko
+                  // v3.16: Palrakh ka apna update install ho raha hai — installer screen mat roko
                   if (Updater.installing(this) && pkg.contains("packageinstaller")) return;
 
                   try {
@@ -5343,7 +7141,7 @@ jobs:
                   String name = getString(R.string.app_name);
                   List<AccessibilityNodeInfo> a = root.findAccessibilityNodeInfosByText(name);
                   if (a != null && !a.isEmpty()) return true;
-                  List<AccessibilityNodeInfo> b = root.findAccessibilityNodeInfosByText("Lagaam");
+                  List<AccessibilityNodeInfo> b = root.findAccessibilityNodeInfosByText("Palrakh");
                   return b != null && !b.isEmpty();
               }
 
@@ -6230,13 +8028,13 @@ jobs:
                       if (!shown) {
                           PendingIntent tap = PendingIntent.getActivity(c, 1, confirm,
                                   PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-                          Updater.notify(c, L.t(c, "Lagaam का अपडेट तैयार है", "Lagaam update is ready"),
+                          Updater.notify(c, L.t(c, "Palrakh का अपडेट तैयार है", "Palrakh update is ready"),
                                   L.t(c, "Install करने के लिए यहाँ दबाएँ", "Tap here to install"), tap);
                       }
                   } else if (st != PackageInstaller.STATUS_SUCCESS) {
                       String m = intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE);
                       if (st == PackageInstaller.STATUS_FAILURE_ABORTED) return;   // user ne khud mana kiya
-                      Updater.notify(c, L.t(c, "Lagaam अपडेट नहीं हो सका", "Lagaam update failed"),
+                      Updater.notify(c, L.t(c, "Palrakh अपडेट नहीं हो सका", "Palrakh update failed"),
                               L.t(c, "बाद में फिर कोशिश होगी. ", "Will try again later. ") + (m == null ? "" : m),
                               Updater.launch(c));
                   }
@@ -6297,11 +8095,11 @@ jobs:
                   public long size;
                   public String notesEn = "";
                   public String notesHi = "";
+                  /** v3.20: har bhasha ke notes (release-notes.json se) */
+                  public java.util.Map<String, String> notesAll = new java.util.HashMap<>();
 
                   public String notes(Context c) {
-                      String n = L.en(c) ? notesEn : notesHi;
-                      if (n == null || n.isEmpty()) n = notesEn.isEmpty() ? notesHi : notesEn;
-                      return n;
+                      return pickNotes(c, notesAll, notesEn, notesHi);
                   }
               }
 
@@ -6362,7 +8160,7 @@ jobs:
                       con.setConnectTimeout(15000);
                       con.setReadTimeout(20000);
                       con.setRequestProperty("Accept", "application/vnd.github+json");
-                      con.setRequestProperty("User-Agent", "Lagaam-Android");
+                      con.setRequestProperty("User-Agent", "Palrakh-Android");
                       if (con.getResponseCode() != 200) return null;
                       String body = read(con.getInputStream());
                       JSONObject o = new JSONObject(body);
@@ -6383,6 +8181,16 @@ jobs:
                           }
                       }
                       parseNotes(o.optString("body", ""), i);
+                      // v3.20: sabhi bhashaon ke notes alag fayl me
+                      if (as != null) {
+                          for (int k = 0; k < as.length(); k++) {
+                              JSONObject a = as.getJSONObject(k);
+                              if ("release-notes.json".equals(a.optString("name"))) {
+                                  String nj = getText(a.optString("browser_download_url", ""));
+                                  if (nj != null) i.notesAll = parseNotesJson(nj);
+                              }
+                          }
+                      }
                       p(c).edit().putLong("lastCheck", System.currentTimeMillis()).apply();
                       return i;
                   } catch (Exception e) {
@@ -6415,6 +8223,56 @@ jobs:
                   i.notesHi = hi.toString();
               }
 
+              /** {"en":["..",".."],"hi":[..],...} → har bhasha ke "• " wale notes */
+              static java.util.Map<String, String> parseNotesJson(String json) {
+                  java.util.Map<String, String> m = new java.util.HashMap<>();
+                  try {
+                      JSONObject o = new JSONObject(json);
+                      java.util.Iterator<String> it = o.keys();
+                      while (it.hasNext()) {
+                          String lang = it.next();
+                          JSONArray arr = o.optJSONArray(lang);
+                          StringBuilder sb = new StringBuilder();
+                          if (arr != null) {
+                              for (int n = 0; n < arr.length(); n++) {
+                                  if (sb.length() > 0) sb.append('\n');
+                                  sb.append("• ").append(arr.optString(n));
+                              }
+                          } else {
+                              sb.append(o.optString(lang, ""));
+                          }
+                          m.put(lang, sb.toString());
+                      }
+                  } catch (Exception ignored) {
+                  }
+                  return m;
+              }
+
+              static String pickNotes(Context c, java.util.Map<String, String> all, String en, String hi) {
+                  String n = all == null ? null : all.get(L.lang(c));
+                  if (n == null || n.isEmpty()) n = L.lang(c).equals("hi") ? hi : en;
+                  if (n == null || n.isEmpty()) n = (en == null || en.isEmpty()) ? hi : en;
+                  return n == null ? "" : n;
+              }
+
+              private static String getText(String url) {
+                  if (url == null || url.isEmpty()) return null;
+                  HttpURLConnection con = null;
+                  try {
+                      con = (HttpURLConnection) new URL(url).openConnection();
+                      con.setInstanceFollowRedirects(true);
+                      con.setConnectTimeout(15000);
+                      con.setReadTimeout(20000);
+                      con.setRequestProperty("User-Agent", "Palrakh-Android");
+                      if (con.getResponseCode() != 200) return null;
+                      return read(con.getInputStream());
+                  } catch (Exception e) {
+                      return null;
+                  } finally {
+                      if (con != null) con.disconnect();
+                  }
+              }
+
               public static boolean dueForCheck(Context c) {
                   return System.currentTimeMillis() - p(c).getLong("lastCheck", 0) > CHECK_EVERY;
               }
@@ -6435,13 +8293,13 @@ jobs:
               /** Background thread par chalayen. Progress callbacks usi thread par aate hain. */
               public static void downloadAndInstall(Context c, Info info, Progress cb) {
                   Context app = c.getApplicationContext();
-                  File f = new File(app.getCacheDir(), "lagaam-update.apk");
+                  File f = new File(app.getCacheDir(), "palrakh-update.apk");
                   try {
                       HttpURLConnection con = (HttpURLConnection) new URL(info.apkUrl).openConnection();
                       con.setInstanceFollowRedirects(true);
                       con.setConnectTimeout(15000);
                       con.setReadTimeout(30000);
-                      con.setRequestProperty("User-Agent", "Lagaam-Android");
+                      con.setRequestProperty("User-Agent", "Palrakh-Android");
                       int rc = con.getResponseCode();
                       if (rc != 200) {
                           cb.onDone(false, "HTTP " + rc);
@@ -6482,6 +8340,7 @@ jobs:
                               .putString("pendingVer", info.version)
                               .putString("notesEn", info.notesEn)
                               .putString("notesHi", info.notesHi)
+                              .putString("notesAll", new JSONObject(info.notesAll).toString())
                               .putBoolean("notesShown", false)
                               .putLong("installUntil", System.currentTimeMillis() + 5 * 60 * 1000)
                               .apply();
@@ -6507,7 +8366,7 @@ jobs:
                   int id = pi.createSession(sp);
                   try (PackageInstaller.Session s = pi.openSession(id)) {
                       try (InputStream in = new FileInputStream(f);
-                           OutputStream out = s.openWrite("lagaam.apk", 0, f.length())) {
+                           OutputStream out = s.openWrite("palrakh.apk", 0, f.length())) {
                           byte[] buf = new byte[64 * 1024];
                           int n;
                           while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
@@ -6528,22 +8387,30 @@ jobs:
                   String v = sp.getString("pendingVer", null);
                   if (v == null || sp.getBoolean("notesShown", true)) return null;
                   if (compare(currentVersion(c), v) < 0) return null;   // abhi install nahi hua
-                  String n = L.en(c) ? sp.getString("notesEn", "") : sp.getString("notesHi", "");
-                  if (n == null || n.isEmpty()) n = sp.getString("notesEn", "");
-                  return n == null ? "" : n;
+                  java.util.Map<String, String> all = new java.util.HashMap<>();
+                  try {
+                      JSONObject o = new JSONObject(sp.getString("notesAll", "{}"));
+                      java.util.Iterator<String> it = o.keys();
+                      while (it.hasNext()) {
+                          String k = it.next();
+                          all.put(k, o.optString(k));
+                      }
+                  } catch (Exception ignored) {
+                  }
+                  return pickNotes(c, all, sp.getString("notesEn", ""), sp.getString("notesHi", ""));
               }
 
               public static void markNotesShown(Context c) {
                   p(c).edit().putBoolean("notesShown", true).remove("installUntil").apply();
               }
 
-              /** MY_PACKAGE_REPLACED par: notification "Lagaam update ho gaya" + kya naya hai. */
+              /** MY_PACKAGE_REPLACED par: notification "Palrakh update ho gaya" + kya naya hai. */
               public static void onUpdated(Context c) {
-                  new File(c.getCacheDir(), "lagaam-update.apk").delete();
+                  new File(c.getCacheDir(), "palrakh-update.apk").delete();
                   String n = freshNotes(c);
                   if (n == null) return;
-                  String title = L.t(c, "Lagaam v" + currentVersion(c) + " में अपडेट हो गया",
-                          "Lagaam updated to v" + currentVersion(c));
+                  String title = L.t(c, "Palrakh v" + currentVersion(c) + " में अपडेट हो गया",
+                          "Palrakh updated to v" + currentVersion(c));
                   notify(c, title, n.isEmpty() ? L.t(c, "नया वर्शन तैयार है", "The new version is ready") : n,
                           launch(c));
               }
@@ -6597,8 +8464,8 @@ jobs:
                   if (!isNewer(c, i)) return;
                   String ver = "v" + i.version;
                   if (!canInstall(c)) {
-                      notify(c, L.t(c, "Lagaam " + ver + " आ गया है", "Lagaam " + ver + " is available"),
-                              L.t(c, "अपडेट के लिए Lagaam खोलें.\n", "Open Lagaam to update.\n") + i.notes(c), launch(c));
+                      notify(c, L.t(c, "Palrakh " + ver + " आ गया है", "Palrakh " + ver + " is available"),
+                              L.t(c, "अपडेट के लिए Palrakh खोलें.\n", "Open Palrakh to update.\n") + i.notes(c), launch(c));
                       return;
                   }
                   downloadAndInstall(c, i, new Progress() {
@@ -7171,7 +9038,7 @@ jobs:
                   android:id="@+id/w_title"
                   android:layout_width="match_parent"
                   android:layout_height="wrap_content"
-                  android:text="Lagaam"
+                  android:text="Palrakh"
                   android:textColor="#8FA8A6"
                   android:textSize="12sp" />
 
@@ -7211,11 +9078,11 @@ jobs:
           cat > FocusLock/app/src/main/res/values/strings.xml <<'ENDOFFILE'
           <?xml version="1.0" encoding="utf-8"?>
           <resources>
-              <string name="app_name">Lagaam</string>
-              <string name="a11y_name">Lagaam – Shorts/Reels block</string>
-              <string name="a11y_desc">Lagaam uses this service to close YouTube Shorts, Instagram Reels and Facebook Reels as soon as they open, and to block websites of locked apps. In strict mode it stops the settings that would remove or stop this app during a lock. It only reads screen element IDs and never saves or sends any data.</string>
-              <string name="notif_name">Lagaam – Notification hold</string>
-              <string name="widget_name">Lagaam</string>
+              <string name="app_name">Palrakh</string>
+              <string name="a11y_name">Palrakh – Shorts/Reels block</string>
+              <string name="a11y_desc">Palrakh uses this service to close YouTube Shorts, Instagram Reels and Facebook Reels as soon as they open, and to block websites of locked apps. In strict mode it stops the settings that would remove or stop this app during a lock. It only reads screen element IDs and never saves or sends any data.</string>
+              <string name="notif_name">Palrakh – Notification hold</string>
+              <string name="widget_name">Palrakh</string>
           </resources>
           ENDOFFILE
           mkdir -p FocusLock/app/src/main/res/xml
@@ -7262,6 +9129,16 @@ jobs:
           cat > FocusLock/gradle.properties <<'ENDOFFILE'
           org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8
           android.nonTransitiveRClass=true
+          ENDOFFILE
+          mkdir -p FocusLock
+          cat > FocusLock/release-notes.json <<'ENDOFFILE'
+          {
+            "en": ["Update notes now show in your chosen language", "After paying, the confirmation page shows in your language"],
+            "hi": ["अपडेट की जानकारी अब आपकी चुनी हुई भाषा में दिखती है", "Payment के बाद वाला पेज भी आपकी भाषा में दिखता है"],
+            "es": ["Las novedades de cada actualización ahora aparecen en tu idioma", "Tras pagar, la página de confirmación aparece en tu idioma"],
+            "ar": ["تظهر ملاحظات التحديث الآن باللغة التي اخترتها", "بعد الدفع، تظهر صفحة التأكيد بلغتك"],
+            "id": ["Catatan pembaruan kini tampil dalam bahasa pilihanmu", "Setelah membayar, halaman konfirmasi tampil dalam bahasamu"]
+          }
           ENDOFFILE
           mkdir -p FocusLock
           cat > FocusLock/settings.gradle <<'ENDOFFILE'
@@ -7387,7 +9264,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.VER }}-build${{ github.run_number }}
-          name: FocusLock v${{ env.VER }} (build ${{ github.run_number }})
+          name: Palrakh v${{ env.VER }} (build ${{ github.run_number }})
           body_path: FocusLock/RELEASE_NOTES.md
           make_latest: true
           files: |
@@ -7395,3 +9272,4 @@ jobs:
             FocusLock-Lite-v${{ env.VER }}.apk
             FocusLock.apk
             FocusLock-Lite.apk
+            FocusLock/release-notes.json
